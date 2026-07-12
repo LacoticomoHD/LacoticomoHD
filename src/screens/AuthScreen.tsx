@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/lib/AuthContext';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useTheme } from '@/theme/ThemeContext';
 
 export function AuthScreen() {
@@ -69,6 +70,13 @@ export function AuthScreen() {
             Bewerte die besten Dönerläden deiner Stadt
           </Text>
 
+          {!isSupabaseConfigured ? (
+            <Text style={[styles.demoBanner, { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.textSecondary }]}>
+              ⚠️ Demo-Version ohne Backend: Diese APK wurde ohne Supabase-Zugangsdaten
+              gebaut. Login und Daten funktionieren erst in der finalen Version.
+            </Text>
+          ) : null}
+
           <TextField
             label="E-Mail"
             value={email}
@@ -115,6 +123,13 @@ export function AuthScreen() {
 
 const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  demoBanner: {
+    borderRadius: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+    padding: 12,
+  },
   flex: { flex: 1 },
   forgotText: { fontSize: 14, marginTop: 12, textAlign: 'center' },
   logo: { fontSize: 64, textAlign: 'center' },

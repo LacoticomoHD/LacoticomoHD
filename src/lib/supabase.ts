@@ -3,20 +3,30 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
 // In .env hinterlegen (siehe README): EXPO_PUBLIC_SUPABASE_URL und EXPO_PUBLIC_SUPABASE_ANON_KEY
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
+/** true, wenn die App ohne Backend-Zugangsdaten gebaut wurde (Demo-Modus). */
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
   console.warn(
     'Supabase ist nicht konfiguriert. EXPO_PUBLIC_SUPABASE_URL und EXPO_PUBLIC_SUPABASE_ANON_KEY in .env setzen.'
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+// Platzhalter verhindern einen Absturz beim Start, wenn keine Zugangsdaten gesetzt sind –
+// Anfragen laufen dann ins Leere und die UI zeigt den Demo-Hinweis.
+export const supabase = createClient(
+  supabaseUrl || 'https://demo-nicht-konfiguriert.supabase.co',
+  supabaseAnonKey || 'demo-anon-key',
+  {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  }
+);
+
