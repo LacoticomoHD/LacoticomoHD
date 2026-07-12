@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Don Döner",
+    "slug": "don-doener",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "dondoener",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "de.dondoener.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Don Döner nutzt deinen Standort, um Dönerläden in deiner Nähe auf der Karte anzuzeigen."
+      }
+    },
+    "android": {
+      "package": "de.dondoener.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Don Döner nutzt deinen Standort, um Dönerläden in deiner Nähe anzuzeigen."
+        }
+      ]
+    ]
+  }
+}
