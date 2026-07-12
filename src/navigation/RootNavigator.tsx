@@ -9,14 +9,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAuth } from '@/lib/AuthContext';
-import { AddShopScreen } from '@/screens/AddShopScreen';
 import { AuthScreen } from '@/screens/AuthScreen';
 import { LegalScreen } from '@/screens/LegalScreen';
 import { MapScreen } from '@/screens/MapScreen';
+import { MyRatingsScreen } from '@/screens/MyRatingsScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { RateShopScreen } from '@/screens/RateShopScreen';
 import { ReportShopScreen } from '@/screens/ReportShopScreen';
 import { ShopDetailScreen } from '@/screens/ShopDetailScreen';
+import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
 import { useTheme } from '@/theme/ThemeContext';
 
@@ -118,8 +119,18 @@ export function RootNavigator() {
           />
           <Stack.Screen
             name="AddShop"
-            component={AddShopScreen}
+            component={ShopFormScreen}
             options={{ title: 'Laden hinzufügen' }}
+          />
+          <Stack.Screen
+            name="EditShop"
+            component={ShopFormScreen}
+            options={{ title: 'Laden bearbeiten' }}
+          />
+          <Stack.Screen
+            name="MyRatings"
+            component={MyRatingsScreen}
+            options={{ title: 'Meine Bewertungen' }}
           />
           <Stack.Screen
             name="Legal"

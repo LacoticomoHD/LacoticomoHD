@@ -1,6 +1,7 @@
 import {
   OpeningHours,
   Rating,
+  RatingWithShop,
   ReportReason,
   Shop,
   ShopFeature,
@@ -25,6 +26,12 @@ export async function fetchShopsWithSummary(): Promise<ShopWithSummary[]> {
     ...shop,
     summary: summaries.get(shop.id) ?? null,
   }));
+}
+
+export async function fetchShops(): Promise<Shop[]> {
+  const { data, error } = await supabase.from('shops').select('*');
+  if (error) throw new Error(error.message);
+  return data as Shop[];
 }
 
 export async function fetchShop(shopId: string): Promise<Shop> {
@@ -80,6 +87,7 @@ export interface NewShopInput {
   longitude: number;
   opening_hours: OpeningHours;
   features: ShopFeature[];
+  doener_preis: number | null;
 }
 
 export async function createShop(input: NewShopInput, userId: string): Promise<Shop> {
@@ -90,6 +98,23 @@ export async function createShop(input: NewShopInput, userId: string): Promise<S
     .single();
   if (error) throw new Error(error.message);
   return data as Shop;
+}
+
+/** Aktualisiert einen Laden – per RLS nur für die Person erlaubt, die ihn angelegt hat. */
+export async function updateShop(shopId: string, input: NewShopInput) {
+  const { error } = await supabase.from('shops').update(input).eq('id', shopId);
+  if (error) throw new Error(error.message);
+}
+
+/** Alle eigenen Bewertungen inkl. Ladendaten für die Profil-Übersicht. */
+export async function fetchMyRatings(userId: string): Promise<RatingWithShop[]> {
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('*, shops(id, name, address)')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data as unknown as RatingWithShop[];
 }
 
 /** Meldet einen fehlerhaften Ladeneintrag (falsche Adresse, geschlossen, Duplikat …). */

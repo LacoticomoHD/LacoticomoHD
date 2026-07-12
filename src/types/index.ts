@@ -81,6 +81,8 @@ export interface Shop {
   longitude: number;
   opening_hours: OpeningHours;
   features: ShopFeature[];
+  /** Preis des Standard-Döners in Euro, optional. */
+  doener_preis: number | null;
   created_by: string | null;
   created_at: string;
 }
@@ -89,6 +91,7 @@ export interface Shop {
 export const REPORT_REASONS = [
   'falsche_adresse',
   'falsche_oeffnungszeiten',
+  'falscher_preis',
   'dauerhaft_geschlossen',
   'duplikat',
   'sonstiges',
@@ -99,9 +102,15 @@ export type ReportReason = (typeof REPORT_REASONS)[number];
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   falsche_adresse: 'Falsche Adresse',
   falsche_oeffnungszeiten: 'Falsche Öffnungszeiten',
+  falscher_preis: 'Falscher Dönerpreis',
   dauerhaft_geschlossen: 'Dauerhaft geschlossen',
   duplikat: 'Doppelter Eintrag',
   sonstiges: 'Sonstiges',
+};
+
+/** Eigene Bewertung inkl. Basisdaten des bewerteten Ladens (für die Profil-Übersicht). */
+export type RatingWithShop = Rating & {
+  shops: Pick<Shop, 'id' | 'name' | 'address'> | null;
 };
 
 export interface Rating {

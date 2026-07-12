@@ -1,11 +1,29 @@
-import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
-import { createShop, geocodeAddress, GeocodingResult } from '@/lib/api';
+import {
+  createShop,
+  fetchShop,
+  fetchShops,
+  geocodeAddress,
+  GeocodingResult,
+  updateShop,
+} from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { distanceKm } from '@/lib/geo';
+import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
   OpeningHours,
@@ -28,21 +46,63 @@ interface DayInput {
 
 const defaultDay: DayInput = { closed: false, open: '11:00', close: '22:00' };
 
-export function AddShopScreen() {
+function emptyDays(): Record<Weekday, DayInput> {
+  return Object.fromEntries(WEEKDAYS.map((d) => [d, { ...defaultDay }])) as Record<
+    Weekday,
+    DayInput
+  >;
+}
+
+/** Vergleichsform für den Duplikat-Check: klein, ohne Sonderzeichen/Leerzeichen. */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-zäöüß0-9]/g, '');
+}
+
+/** Formular für "Laden anlegen" (Route AddShop) und "Laden bearbeiten" (Route EditShop). */
+export function ShopFormScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddShop' | 'EditShop'>>();
   const navigation = useNavigation();
+  const editShopId = route.name === 'EditShop' ? route.params?.shopId ?? null : null;
 
+  const [loading, setLoading] = useState(editShopId != null);
   const [name, setName] = useState('');
+  const [priceText, setPriceText] = useState('');
   const [addressQuery, setAddressQuery] = useState('');
   const [geoResults, setGeoResults] = useState<GeocodingResult[]>([]);
   const [selected, setSelected] = useState<GeocodingResult | null>(null);
   const [features, setFeatures] = useState<Set<ShopFeature>>(new Set());
-  const [days, setDays] = useState<Record<Weekday, DayInput>>(
-    Object.fromEntries(WEEKDAYS.map((d) => [d, { ...defaultDay }])) as Record<Weekday, DayInput>
-  );
+  const [days, setDays] = useState<Record<Weekday, DayInput>>(emptyDays());
   const [busy, setBusy] = useState(false);
   const [searching, setSearching] = useState(false);
+
+  // Im Bearbeiten-Modus die bestehenden Werte laden.
+  useEffect(() => {
+    if (!editShopId) return;
+    fetchShop(editShopId)
+      .then((shop) => {
+        setName(shop.name);
+        setPriceText(shop.doener_preis != null ? shop.doener_preis.toFixed(2).replace('.', ',') : '');
+        setAddressQuery(shop.address);
+        setSelected({
+          displayName: shop.address,
+          latitude: shop.latitude,
+          longitude: shop.longitude,
+        });
+        setFeatures(new Set(shop.features ?? []));
+        const nextDays = emptyDays();
+        for (const day of WEEKDAYS) {
+          const entry = shop.opening_hours?.[day];
+          nextDays[day] = entry
+            ? { closed: false, open: entry.open, close: entry.close }
+            : { ...defaultDay, closed: true };
+        }
+        setDays(nextDays);
+      })
+      .catch((e: Error) => Alert.alert('Fehler', e.message))
+      .finally(() => setLoading(false));
+  }, [editShopId]);
 
   const search = async () => {
     if (!addressQuery.trim()) return;
@@ -73,6 +133,35 @@ export function AddShopScreen() {
   const setDay = (day: Weekday, patch: Partial<DayInput>) =>
     setDays((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
 
+  const parsePrice = (): { ok: boolean; value: number | null } => {
+    const trimmed = priceText.trim();
+    if (!trimmed) return { ok: true, value: null };
+    const value = parseFloat(trimmed.replace(',', '.'));
+    if (Number.isNaN(value) || value <= 0 || value >= 50) return { ok: false, value: null };
+    return { ok: true, value: Math.round(value * 100) / 100 };
+  };
+
+  const save = async (input: Parameters<typeof createShop>[0]) => {
+    if (!user) return;
+    setBusy(true);
+    try {
+      if (editShopId) {
+        await updateShop(editShopId, input);
+      } else {
+        await createShop(input, user.id);
+      }
+      Alert.alert(
+        'Gespeichert',
+        editShopId ? 'Die Änderungen wurden gespeichert.' : 'Der Dönerladen wurde angelegt.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (e) {
+      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!user) return;
     if (!name.trim()) {
@@ -81,6 +170,11 @@ export function AddShopScreen() {
     }
     if (!selected) {
       Alert.alert('Fehler', 'Bitte eine Adresse suchen und auswählen.');
+      return;
+    }
+    const price = parsePrice();
+    if (!price.ok) {
+      Alert.alert('Fehler', 'Ungültiger Dönerpreis. Beispiel: 6,50');
       return;
     }
     for (const day of WEEKDAYS) {
@@ -100,28 +194,54 @@ export function AddShopScreen() {
       if (!d.closed) opening_hours[day] = { open: d.open, close: d.close };
     }
 
-    setBusy(true);
-    try {
-      await createShop(
-        {
-          name: name.trim(),
-          address: selected.displayName,
-          latitude: selected.latitude,
-          longitude: selected.longitude,
-          opening_hours,
-          features: [...features],
-        },
-        user.id
-      );
-      Alert.alert('Gespeichert', 'Der Dönerladen wurde angelegt.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
-    } finally {
-      setBusy(false);
+    const input = {
+      name: name.trim(),
+      address: selected.displayName,
+      latitude: selected.latitude,
+      longitude: selected.longitude,
+      opening_hours,
+      features: [...features],
+      doener_preis: price.value,
+    };
+
+    // Duplikat-Schutz: gibt es im Umkreis von 150 m schon einen ähnlich benannten Laden?
+    if (!editShopId) {
+      try {
+        const existing = await fetchShops();
+        const normalized = normalizeName(input.name);
+        const duplicate = existing.find((s) => {
+          const near =
+            distanceKm(s.latitude, s.longitude, input.latitude, input.longitude) < 0.15;
+          const a = normalizeName(s.name);
+          const similar = a.includes(normalized) || normalized.includes(a);
+          return near && similar;
+        });
+        if (duplicate) {
+          Alert.alert(
+            'Möglicherweise schon vorhanden',
+            `In der Nähe gibt es bereits „${duplicate.name}" (${duplicate.address}). Trotzdem anlegen?`,
+            [
+              { text: 'Abbrechen', style: 'cancel' },
+              { text: 'Trotzdem anlegen', onPress: () => save(input) },
+            ]
+          );
+          return;
+        }
+      } catch {
+        // Duplikat-Check ist Komfort – bei Fehlern normal weiterspeichern.
+      }
     }
+
+    await save(input);
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator color={theme.colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -132,6 +252,14 @@ export function AddShopScreen() {
       <TextField label="Name des Ladens" value={name} onChangeText={setName} placeholder="z. B. Dönerbude Ali" />
 
       <TextField
+        label="Preis Standard-Döner in € (optional)"
+        value={priceText}
+        onChangeText={setPriceText}
+        placeholder="z. B. 6,50"
+        keyboardType="decimal-pad"
+      />
+
+      <TextField
         label="Adresse"
         value={addressQuery}
         onChangeText={setAddressQuery}
@@ -140,6 +268,11 @@ export function AddShopScreen() {
         returnKeyType="search"
       />
       <Button title="Adresse suchen" onPress={search} variant="secondary" loading={searching} />
+      {selected && geoResults.length === 0 ? (
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 6 }}>
+          ✓ Aktuelle Adresse: {selected.displayName}
+        </Text>
+      ) : null}
 
       {geoResults.map((r) => {
         const isSelected = selected?.displayName === r.displayName;
@@ -235,12 +368,17 @@ export function AddShopScreen() {
       })}
 
       <View style={styles.spacer} />
-      <Button title="Laden anlegen" onPress={submit} loading={busy} />
+      <Button
+        title={editShopId ? 'Änderungen speichern' : 'Laden anlegen'}
+        onPress={submit}
+        loading={busy}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   closedSwitch: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   content: { padding: 20, paddingBottom: 48 },
   dayHeader: {

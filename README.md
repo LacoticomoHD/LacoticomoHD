@@ -21,6 +21,13 @@ Google-Maps-Rezensionen so nicht gibt.
 - 🔐 **Login/Registrierung** per E-Mail & Passwort (Supabase Auth), inkl. Passwort-Zurücksetzen
 - 🌗 **Hell- und Dunkelmodus** – manuell wählbar oder automatisch nach Systemeinstellung
 - ✏️ **Eine Bewertung pro Nutzer und Laden**, jederzeit änderbar (kein Bewertungs-Spam)
+- 🔎 **Filter** nach Besonderheiten und „Jetzt geöffnet" – auf Karte und Liste
+- 🧭 **Navigation zum Laden** in der System-Karten-App: Auto, zu Fuß, Fahrrad oder ÖPNV
+- 💶 **Dönerpreis** pro Laden (optional) – inkl. Meldegrund „falscher Preis"
+- 📏 **Entfernungsanzeige** und Sortierung „Nächste zuerst" in der Liste
+- ✏️ **Eigene Läden bearbeiten** (Öffnungszeiten, Preis, Besonderheiten …)
+- 🛡️ **Duplikat-Warnung** beim Anlegen, wenn in der Nähe schon ein ähnlicher Laden existiert
+- ⭐ **„Meine Bewertungen"** im Profil mit Direktzugriff zum Ändern
 - 🚩 **Melden-Funktion** für fehlerhafte Einträge (falsche Adresse, geschlossen, Duplikat …)
 - 🗑️ **Konto-Selbstlöschung** direkt in der App (Pflicht für den Apple App Store)
 - 📄 **Impressum & Datenschutzerklärung** in der App (Platzhalter vor Release ausfüllen!)
@@ -83,9 +90,10 @@ Für Store-Builds (`.aab`/`.ipa`) empfiehlt sich [EAS Build](https://docs.expo.d
   Veröffentlichung in Deutschland!
 - **Tile-Anbieter**: `EXPO_PUBLIC_TILE_URL` in `.env` auf einen eigenen Anbieter (z. B.
   MapTiler) setzen – die offiziellen OSM-Server sind nicht für den App-Massenbetrieb gedacht.
-- **Bestehende Datenbank aktualisieren**: Wer `schema.sql` schon in der ersten Version
-  eingespielt hat, führt einmalig `supabase/upgrade_v1_zu_v2.sql` aus
-  (Meldungen + Konto-Löschung). Frische Datenbanken brauchen nur `schema.sql`.
+- **Bestehende Datenbank aktualisieren**: Wer `schema.sql` schon in einer früheren Version
+  eingespielt hat, führt die passenden Upgrade-Skripte in Reihenfolge aus:
+  `supabase/upgrade_v1_zu_v2.sql` (Meldungen + Konto-Löschung), dann
+  `supabase/upgrade_v2_zu_v3.sql` (Dönerpreis). Frische Datenbanken brauchen nur `schema.sql`.
 
 ## Hinweise zu OpenStreetMap
 

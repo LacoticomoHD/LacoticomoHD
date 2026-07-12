@@ -4,6 +4,8 @@ export type RootStackParamList = {
   RateShop: { shopId: string; shopName: string };
   ReportShop: { shopId: string; shopName: string };
   AddShop: undefined;
+  EditShop: { shopId: string };
+  MyRatings: undefined;
   Legal: undefined;
 };
 

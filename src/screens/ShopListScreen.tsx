@@ -1,39 +1,99 @@
+import * as Location from 'expo-location';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { FilterBar } from '@/components/FilterBar';
 import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
 import { fetchShopsWithSummary } from '@/lib/api';
+import { useFilters } from '@/lib/FilterContext';
+import { distanceKm, formatDistance, formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { SHOP_FEATURE_ICONS, ShopWithSummary } from '@/types';
 
+type SortMode = 'rating' | 'distance';
+
+interface Coords {
+  latitude: number;
+  longitude: number;
+}
+
 export function ShopListScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { matchesFilters } = useFilters();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [query, setQuery] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('rating');
+  const [position, setPosition] = useState<Coords | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       fetchShopsWithSummary()
         .then(setShops)
         .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
+      // Standort nur nutzen, wenn die Freigabe schon erteilt wurde (kein Popup hier).
+      Location.getForegroundPermissionsAsync().then(({ status }) => {
+        if (status === 'granted') {
+          Location.getCurrentPositionAsync({}).then(
+            (pos) =>
+              setPosition({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              }),
+            () => {}
+          );
+        }
+      });
     }, [])
   );
 
-  // Beste zuerst; unbewertete ans Ende.
+  const selectDistanceSort = async () => {
+    if (!position) {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Standort benötigt',
+          'Um nach Entfernung zu sortieren, muss der Standortzugriff erlaubt sein.'
+        );
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({});
+      setPosition({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    }
+    setSortMode('distance');
+  };
+
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return shops
+    const filtered = shops
+      .filter(matchesFilters)
       .filter(
         (s) => !q || s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q)
-      )
-      .sort((a, b) => (b.summary?.avg_gesamt ?? -1) - (a.summary?.avg_gesamt ?? -1));
-  }, [shops, query]);
+      );
+    if (sortMode === 'distance' && position) {
+      return filtered.sort(
+        (a, b) =>
+          distanceKm(position.latitude, position.longitude, a.latitude, a.longitude) -
+          distanceKm(position.latitude, position.longitude, b.latitude, b.longitude)
+      );
+    }
+    return filtered.sort(
+      (a, b) => (b.summary?.avg_gesamt ?? -1) - (a.summary?.avg_gesamt ?? -1)
+    );
+  }, [shops, query, sortMode, position, matchesFilters]);
+
+  const sortChip = (active: boolean) => [
+    styles.sortChip,
+    {
+      backgroundColor: active ? theme.colors.surfaceVariant : 'transparent',
+      borderColor: active ? theme.colors.primary : theme.colors.border,
+    },
+  ];
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.colors.background }]}>
@@ -44,18 +104,37 @@ export function ShopListScreen() {
           placeholder="Nach Name oder Adresse suchen…"
         />
       </View>
+      <FilterBar />
+      <View style={styles.sortRow}>
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>Sortierung:</Text>
+        <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')}>
+          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
+            ⭐ Beste zuerst
+          </Text>
+        </Pressable>
+        <Pressable onPress={selectDistanceSort} style={sortChip(sortMode === 'distance')}>
+          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
+            📍 Nächste zuerst
+          </Text>
+        </Pressable>
+      </View>
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            Noch keine Dönerläden eingetragen. Füge auf der Karte mit ＋ den ersten hinzu!
+            {shops.length === 0
+              ? 'Noch keine Dönerläden eingetragen. Füge auf der Karte mit ＋ den ersten hinzu!'
+              : 'Kein Laden passt zu den aktuellen Filtern.'}
           </Text>
         }
         renderItem={({ item }) => {
           const open = isOpenNow(item.opening_hours ?? {});
           const avg = item.summary?.avg_gesamt;
+          const dist = position
+            ? distanceKm(position.latitude, position.longitude, item.latitude, item.longitude)
+            : null;
           return (
             <Pressable
               onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
@@ -101,6 +180,22 @@ export function ShopListScreen() {
                   {(item.features ?? []).map((f) => SHOP_FEATURE_ICONS[f]).join(' ')}
                 </Text>
               </View>
+              {(dist != null || item.doener_preis != null) && (
+                <View style={styles.metaRow}>
+                  {dist != null ? (
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                      📍 {formatDistance(dist)}
+                    </Text>
+                  ) : (
+                    <View />
+                  )}
+                  {item.doener_preis != null ? (
+                    <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '700' }}>
+                      🥙 {formatPrice(item.doener_preis)}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
             </Pressable>
           );
         }}
@@ -131,7 +226,26 @@ const styles = StyleSheet.create({
   cardName: { flex: 1, fontSize: 17, fontWeight: '700' },
   empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
-  list: { paddingBottom: 24, paddingHorizontal: 16 },
+  list: { paddingBottom: 24, paddingHorizontal: 16, paddingTop: 4 },
+  metaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
   ratingRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   searchWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  sortChip: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  sortRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+  },
 });

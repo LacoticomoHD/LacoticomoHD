@@ -3,6 +3,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/AuthContext';
+import { FilterProvider } from '@/lib/FilterContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 
@@ -21,7 +22,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppInner />
+          <FilterProvider>
+            <AppInner />
+          </FilterProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

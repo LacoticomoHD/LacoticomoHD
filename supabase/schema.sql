@@ -15,6 +15,8 @@ create table public.shops (
   opening_hours jsonb not null default '{}'::jsonb,
   -- Besonderheiten: kalb, haehnchen, vegetarisch, vegan, halal, hausgemachtes_brot
   features      text[] not null default '{}',
+  -- Preis des Standard-Döners in Euro (optional)
+  doener_preis  numeric(5, 2) check (doener_preis is null or (doener_preis > 0 and doener_preis < 50)),
   -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
   created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),
@@ -51,7 +53,7 @@ create table public.reports (
   shop_id    uuid not null references public.shops (id) on delete cascade,
   user_id    uuid not null references auth.users (id) on delete cascade,
   reason     text not null check (
-    reason in ('falsche_adresse', 'falsche_oeffnungszeiten', 'dauerhaft_geschlossen', 'duplikat', 'sonstiges')
+    reason in ('falsche_adresse', 'falsche_oeffnungszeiten', 'falscher_preis', 'dauerhaft_geschlossen', 'duplikat', 'sonstiges')
   ),
   details    text check (char_length(details) <= 500),
   created_at timestamptz not null default now()

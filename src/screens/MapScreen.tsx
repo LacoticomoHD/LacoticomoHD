@@ -5,7 +5,9 @@ import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { FilterBar } from '@/components/FilterBar';
 import { fetchShopsWithSummary } from '@/lib/api';
+import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
@@ -29,6 +31,7 @@ export function MapScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const mapRef = useRef<MapView>(null);
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
+  const { matchesFilters } = useFilters();
 
   const loadShops = useCallback(() => {
     fetchShopsWithSummary()
@@ -67,7 +70,7 @@ export function MapScreen() {
         mapType={undefined}
       >
         <UrlTile urlTemplate={OSM_TILE_URL} maximumZ={19} shouldReplaceMapContent />
-        {shops.map((shop) => {
+        {shops.filter(matchesFilters).map((shop) => {
           const open = isOpenNow(shop.opening_hours ?? {});
           const avg = shop.summary?.avg_gesamt;
           return (
@@ -85,6 +88,11 @@ export function MapScreen() {
           );
         })}
       </MapView>
+
+      {/* Filter-Chips über der Karte */}
+      <View style={styles.filterOverlay}>
+        <FilterBar />
+      </View>
 
       {/* OSM-Attribution ist lizenzrechtlich Pflicht. */}
       <View style={[styles.attribution, { backgroundColor: theme.colors.surface }]}>
@@ -134,6 +142,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     width: 56,
   },
+  filterOverlay: { left: 0, position: 'absolute', right: 0, top: 4 },
   flex: { flex: 1 },
   locateFab: { bottom: 92, right: 16 },
 });

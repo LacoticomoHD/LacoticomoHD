@@ -112,6 +112,17 @@ export function ProfileScreen() {
       </View>
 
       <Pressable
+        onPress={() => navigation.navigate('MyRatings')}
+        style={[
+          styles.legalLink,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
+      >
+        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>⭐ Meine Bewertungen</Text>
+        <Text style={{ color: theme.colors.textSecondary }}>›</Text>
+      </Pressable>
+
+      <Pressable
         onPress={() => navigation.navigate('Legal')}
         style={[
           styles.legalLink,

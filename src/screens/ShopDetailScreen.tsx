@@ -16,6 +16,9 @@ import { FeatureBadges } from '@/components/FeatureBadges';
 import { OpeningHoursTable } from '@/components/OpeningHoursTable';
 import { StarRating } from '@/components/StarRating';
 import { fetchShop, fetchShopSummary } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
+import { openDirections, TRAVEL_MODES } from '@/lib/directions';
+import { formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
@@ -28,6 +31,7 @@ import {
 
 export function ShopDetailScreen() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'ShopDetail'>>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { shopId } = route.params;
@@ -63,15 +67,48 @@ export function ShopDetailScreen() {
     >
       <Text style={[styles.name, { color: theme.colors.text }]}>{shop.name}</Text>
       <Text style={{ color: theme.colors.textSecondary, marginTop: 4 }}>📍 {shop.address}</Text>
-      <Text
-        style={{
-          color: open ? theme.colors.success : theme.colors.danger,
-          fontWeight: '700',
-          marginTop: 6,
-        }}
+      <View style={styles.statusRow}>
+        <Text
+          style={{
+            color: open ? theme.colors.success : theme.colors.danger,
+            fontWeight: '700',
+          }}
+        >
+          {open ? '● Jetzt geöffnet' : '● Geschlossen'}
+        </Text>
+        {shop.doener_preis != null ? (
+          <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: '800' }}>
+            🥙 Döner: {formatPrice(shop.doener_preis)}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Navigation zum Laden über die System-Karten-App */}
+      <View
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        {open ? '● Jetzt geöffnet' : '● Geschlossen'}
-      </Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Route zum Laden</Text>
+        <View style={styles.travelRow}>
+          {TRAVEL_MODES.map((m) => (
+            <Pressable
+              key={m.key}
+              onPress={() => openDirections(shop.latitude, shop.longitude, m.key)}
+              style={[
+                styles.travelButton,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 22 }}>{m.icon}</Text>
+              <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>
+                {m.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
 
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <View style={styles.summaryHeader}>
@@ -119,6 +156,16 @@ export function ShopDetailScreen() {
         title="Jetzt bewerten"
         onPress={() => navigation.navigate('RateShop', { shopId: shop.id, shopName: shop.name })}
       />
+      {user && shop.created_by === user.id ? (
+        <Pressable
+          onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}
+          style={styles.reportLink}
+        >
+          <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
+            ✏️ Eintrag bearbeiten (von dir angelegt)
+          </Text>
+        </Pressable>
+      ) : null}
       <Pressable
         onPress={() =>
           navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name })
@@ -146,6 +193,21 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40, gap: 0 },
   name: { fontSize: 26, fontWeight: '800' },
   reportLink: { alignSelf: 'center', marginTop: 16, padding: 4 },
+  statusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  travelButton: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    gap: 2,
+    paddingVertical: 10,
+  },
+  travelRow: { flexDirection: 'row', gap: 8 },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
   summaryHeader: {
     alignItems: 'baseline',
