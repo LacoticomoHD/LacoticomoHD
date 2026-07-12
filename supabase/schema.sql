@@ -15,7 +15,8 @@ create table public.shops (
   opening_hours jsonb not null default '{}'::jsonb,
   -- Besonderheiten: kalb, haehnchen, vegetarisch, vegan, halal, hausgemachtes_brot
   features      text[] not null default '{}',
-  created_by    uuid not null references auth.users (id) on delete cascade,
+  -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
+  created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),
   constraint valid_features check (
     features <@ array['kalb', 'haehnchen', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot']::text[]
@@ -43,6 +44,22 @@ create index ratings_shop_id_idx on public.ratings (shop_id);
 create index shops_created_by_idx on public.shops (created_by);
 
 -- ---------------------------------------------------------------------------
+-- Meldungen fehlerhafter Ladeneinträge
+-- ---------------------------------------------------------------------------
+create table public.reports (
+  id         uuid primary key default gen_random_uuid(),
+  shop_id    uuid not null references public.shops (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  reason     text not null check (
+    reason in ('falsche_adresse', 'falsche_oeffnungszeiten', 'dauerhaft_geschlossen', 'duplikat', 'sonstiges')
+  ),
+  details    text check (char_length(details) <= 500),
+  created_at timestamptz not null default now()
+);
+
+create index reports_shop_id_idx on public.reports (shop_id);
+
+-- ---------------------------------------------------------------------------
 -- Aggregierte Bewertungen pro Laden (von der App gelesen)
 -- ---------------------------------------------------------------------------
 create view public.shop_rating_summary
@@ -67,6 +84,7 @@ group by shop_id;
 -- ---------------------------------------------------------------------------
 alter table public.shops enable row level security;
 alter table public.ratings enable row level security;
+alter table public.reports enable row level security;
 
 -- Läden: jeder Angemeldete darf lesen und anlegen; ändern/löschen nur, wer sie angelegt hat.
 create policy "shops_select" on public.shops
@@ -94,3 +112,33 @@ create policy "ratings_update_own" on public.ratings
 
 create policy "ratings_delete_own" on public.ratings
   for delete to authenticated using (user_id = auth.uid());
+
+-- Meldungen: Angemeldete dürfen melden und ihre eigenen Meldungen sehen.
+-- Auswerten/Löschen erfolgt durch Admins über das Supabase-Dashboard.
+create policy "reports_insert_own" on public.reports
+  for insert to authenticated with check (user_id = auth.uid());
+
+create policy "reports_select_own" on public.reports
+  for select to authenticated using (user_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- Konto-Selbstlöschung (Pflicht für App-Store-Apps mit Registrierung)
+-- Löscht das eigene Konto; Bewertungen und Meldungen fallen per Cascade weg,
+-- eingetragene Läden bleiben ohne Personenbezug erhalten (created_by = null).
+-- ---------------------------------------------------------------------------
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Nicht angemeldet';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;

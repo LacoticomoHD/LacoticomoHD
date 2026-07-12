@@ -81,9 +81,28 @@ export interface Shop {
   longitude: number;
   opening_hours: OpeningHours;
   features: ShopFeature[];
-  created_by: string;
+  created_by: string | null;
   created_at: string;
 }
+
+/** Gründe für die Meldung eines fehlerhaften Ladeneintrags. */
+export const REPORT_REASONS = [
+  'falsche_adresse',
+  'falsche_oeffnungszeiten',
+  'dauerhaft_geschlossen',
+  'duplikat',
+  'sonstiges',
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  falsche_adresse: 'Falsche Adresse',
+  falsche_oeffnungszeiten: 'Falsche Öffnungszeiten',
+  dauerhaft_geschlossen: 'Dauerhaft geschlossen',
+  duplikat: 'Doppelter Eintrag',
+  sonstiges: 'Sonstiges',
+};
 
 export interface Rating {
   id: string;

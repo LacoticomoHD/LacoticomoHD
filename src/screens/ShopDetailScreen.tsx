@@ -1,5 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -111,6 +119,16 @@ export function ShopDetailScreen() {
         title="Jetzt bewerten"
         onPress={() => navigation.navigate('RateShop', { shopId: shop.id, shopName: shop.name })}
       />
+      <Pressable
+        onPress={() =>
+          navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name })
+        }
+        style={styles.reportLink}
+      >
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+          🚩 Fehler in diesem Eintrag melden
+        </Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -127,6 +145,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   content: { padding: 20, paddingBottom: 40, gap: 0 },
   name: { fontSize: 26, fontWeight: '800' },
+  reportLink: { alignSelf: 'center', marginTop: 16, padding: 4 },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
   summaryHeader: {
     alignItems: 'baseline',

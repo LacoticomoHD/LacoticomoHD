@@ -11,9 +11,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/lib/AuthContext';
 import { AddShopScreen } from '@/screens/AddShopScreen';
 import { AuthScreen } from '@/screens/AuthScreen';
+import { LegalScreen } from '@/screens/LegalScreen';
 import { MapScreen } from '@/screens/MapScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { RateShopScreen } from '@/screens/RateShopScreen';
+import { ReportShopScreen } from '@/screens/ReportShopScreen';
 import { ShopDetailScreen } from '@/screens/ShopDetailScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
 import { useTheme } from '@/theme/ThemeContext';
@@ -110,9 +112,19 @@ export function RootNavigator() {
             options={{ title: 'Bewerten' }}
           />
           <Stack.Screen
+            name="ReportShop"
+            component={ReportShopScreen}
+            options={{ title: 'Eintrag melden' }}
+          />
+          <Stack.Screen
             name="AddShop"
             component={AddShopScreen}
             options={{ title: 'Laden hinzufügen' }}
+          />
+          <Stack.Screen
+            name="Legal"
+            component={LegalScreen}
+            options={{ title: 'Impressum & Datenschutz' }}
           />
         </Stack.Navigator>
       ) : (

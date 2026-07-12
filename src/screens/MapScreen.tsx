@@ -19,7 +19,10 @@ const INITIAL_REGION = {
   longitudeDelta: 0.08,
 };
 
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Für Produktivbetrieb eigenen Tile-Anbieter in .env setzen (EXPO_PUBLIC_TILE_URL),
+// z. B. MapTiler – die offiziellen OSM-Server sind nicht für App-Massenbetrieb gedacht.
+const OSM_TILE_URL =
+  process.env.EXPO_PUBLIC_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export function MapScreen() {
   const { theme } = useTheme();

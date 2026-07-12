@@ -1,6 +1,7 @@
 import {
   OpeningHours,
   Rating,
+  ReportReason,
   Shop,
   ShopFeature,
   ShopRatingSummary,
@@ -89,6 +90,29 @@ export async function createShop(input: NewShopInput, userId: string): Promise<S
     .single();
   if (error) throw new Error(error.message);
   return data as Shop;
+}
+
+/** Meldet einen fehlerhaften Ladeneintrag (falsche Adresse, geschlossen, Duplikat …). */
+export async function createReport(
+  shopId: string,
+  userId: string,
+  reason: ReportReason,
+  details: string
+) {
+  const { error } = await supabase.from('reports').insert({
+    shop_id: shopId,
+    user_id: userId,
+    reason,
+    details: details.trim() || null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Löscht das eigene Konto samt aller Bewertungen (DB-Funktion delete_own_account).
+ *  Selbst angelegte Läden bleiben als Community-Daten erhalten. */
+export async function deleteOwnAccount() {
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) throw new Error(error.message);
 }
 
 export interface GeocodingResult {

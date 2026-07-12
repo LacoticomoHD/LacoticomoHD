@@ -21,6 +21,10 @@ Google-Maps-Rezensionen so nicht gibt.
 - 🔐 **Login/Registrierung** per E-Mail & Passwort (Supabase Auth), inkl. Passwort-Zurücksetzen
 - 🌗 **Hell- und Dunkelmodus** – manuell wählbar oder automatisch nach Systemeinstellung
 - ✏️ **Eine Bewertung pro Nutzer und Laden**, jederzeit änderbar (kein Bewertungs-Spam)
+- 🚩 **Melden-Funktion** für fehlerhafte Einträge (falsche Adresse, geschlossen, Duplikat …)
+- 🗑️ **Konto-Selbstlöschung** direkt in der App (Pflicht für den Apple App Store)
+- 📄 **Impressum & Datenschutzerklärung** in der App (Platzhalter vor Release ausfüllen!)
+- 👑 **Eigenes App-Icon und Splashscreen** (gekrönter Dönerspieß, hell & dunkel)
 
 ## Tech-Stack
 
@@ -71,6 +75,17 @@ Für Store-Builds (`.aab`/`.ipa`) empfiehlt sich [EAS Build](https://docs.expo.d
   der Bewertungen je Laden.
 - **Nutzerkonten** liegen in Supabase Auth (`auth.users`); RLS stellt sicher, dass jeder nur
   seine eigenen Bewertungen und Läden ändern kann.
+
+## Vor dem Store-Release ausfüllen
+
+- **Impressum & Datenschutz**: In `src/screens/LegalScreen.tsx` die `[Platzhalter]` durch
+  echte Angaben ersetzen (Name, Anschrift, E-Mail). Ohne vollständiges Impressum keine
+  Veröffentlichung in Deutschland!
+- **Tile-Anbieter**: `EXPO_PUBLIC_TILE_URL` in `.env` auf einen eigenen Anbieter (z. B.
+  MapTiler) setzen – die offiziellen OSM-Server sind nicht für den App-Massenbetrieb gedacht.
+- **Bestehende Datenbank aktualisieren**: Wer `schema.sql` schon in der ersten Version
+  eingespielt hat, führt einmalig `supabase/upgrade_v1_zu_v2.sql` aus
+  (Meldungen + Konto-Löschung). Frische Datenbanken brauchen nur `schema.sql`.
 
 ## Hinweise zu OpenStreetMap
 
