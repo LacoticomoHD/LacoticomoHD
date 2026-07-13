@@ -1,10 +1,12 @@
 import {
+  FeatureVote,
   OpeningHours,
   Rating,
   RatingWithShop,
   ReportReason,
   Shop,
   ShopFeature,
+  ShopFeatureSummary,
   ShopRatingSummary,
   ShopWithSummary,
 } from '@/types';
@@ -12,20 +14,95 @@ import {
 import { supabase } from './supabase';
 
 export async function fetchShopsWithSummary(): Promise<ShopWithSummary[]> {
-  const [shopsRes, summariesRes] = await Promise.all([
+  const [shopsRes, summariesRes, featuresRes] = await Promise.all([
     supabase.from('shops').select('*'),
     supabase.from('shop_rating_summary').select('*'),
+    supabase.from('shop_feature_summary').select('*').gt('score', 0),
   ]);
   if (shopsRes.error) throw new Error(shopsRes.error.message);
   if (summariesRes.error) throw new Error(summariesRes.error.message);
+  if (featuresRes.error) throw new Error(featuresRes.error.message);
 
   const summaries = new Map<string, ShopRatingSummary>(
     (summariesRes.data as ShopRatingSummary[]).map((s) => [s.shop_id, s])
   );
+  // Besonderheiten stammen aus der Community-Abstimmung (nur positiver Saldo zählt).
+  const confirmedFeatures = new Map<string, ShopFeature[]>();
+  for (const row of featuresRes.data as ShopFeatureSummary[]) {
+    const list = confirmedFeatures.get(row.shop_id) ?? [];
+    list.push(row.feature);
+    confirmedFeatures.set(row.shop_id, list);
+  }
   return (shopsRes.data as Shop[]).map((shop) => ({
     ...shop,
+    features: confirmedFeatures.get(shop.id) ?? [],
     summary: summaries.get(shop.id) ?? null,
   }));
+}
+
+/** Abstimmungsstand der Besonderheiten eines Ladens. */
+export async function fetchFeatureSummary(shopId: string): Promise<ShopFeatureSummary[]> {
+  const { data, error } = await supabase
+    .from('shop_feature_summary')
+    .select('*')
+    .eq('shop_id', shopId);
+  if (error) throw new Error(error.message);
+  return data as ShopFeatureSummary[];
+}
+
+/** Eigene Besonderheiten-Stimmen für einen Laden. */
+export async function fetchMyFeatureVotes(
+  shopId: string,
+  userId: string
+): Promise<Partial<Record<ShopFeature, FeatureVote>>> {
+  const { data, error } = await supabase
+    .from('shop_feature_votes')
+    .select('feature, vote')
+    .eq('shop_id', shopId)
+    .eq('user_id', userId);
+  if (error) throw new Error(error.message);
+  const result: Partial<Record<ShopFeature, FeatureVote>> = {};
+  for (const row of data as { feature: ShopFeature; vote: FeatureVote }[]) {
+    result[row.feature] = row.vote;
+  }
+  return result;
+}
+
+/** Speichert die Besonderheiten-Stimmen eines Nutzers (0 = Stimme zurückziehen).
+ *  Datenbankseitig nur erlaubt, wenn der Nutzer den Laden bewertet hat. */
+export async function saveFeatureVotes(
+  shopId: string,
+  userId: string,
+  votes: Partial<Record<ShopFeature, FeatureVote | 0>>
+) {
+  const toUpsert = Object.entries(votes)
+    .filter(([, v]) => v === 1 || v === -1)
+    .map(([feature, vote]) => ({
+      shop_id: shopId,
+      user_id: userId,
+      feature,
+      vote,
+      updated_at: new Date().toISOString(),
+    }));
+  const toDelete = Object.entries(votes)
+    .filter(([, v]) => v === 0)
+    .map(([feature]) => feature);
+
+  if (toUpsert.length > 0) {
+    const { error } = await supabase
+      .from('shop_feature_votes')
+      .upsert(toUpsert, { onConflict: 'shop_id,user_id,feature' });
+    if (error) throw new Error(error.message);
+  }
+  if (toDelete.length > 0) {
+    const { error } = await supabase
+      .from('shop_feature_votes')
+      .delete()
+      .eq('shop_id', shopId)
+      .eq('user_id', userId)
+      .in('feature', toDelete);
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function fetchShops(): Promise<Shop[]> {

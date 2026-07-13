@@ -4,12 +4,18 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
 import { SHOP_FEATURE_ICONS, SHOP_FEATURE_LABELS, ShopFeature } from '@/types';
 
-export function FeatureBadges({ features }: { features: ShopFeature[] }) {
+interface Props {
+  features: ShopFeature[];
+  /** Anzahl Bestätigungen pro Besonderheit (aus der Community-Abstimmung). */
+  counts?: Partial<Record<ShopFeature, number>>;
+}
+
+export function FeatureBadges({ features, counts }: Props) {
   const { theme } = useTheme();
   if (features.length === 0) {
     return (
       <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
-        Keine Besonderheiten hinterlegt
+        Noch keine Besonderheiten von der Community bestätigt
       </Text>
     );
   }
@@ -25,6 +31,9 @@ export function FeatureBadges({ features }: { features: ShopFeature[] }) {
         >
           <Text style={{ color: theme.colors.text, fontSize: 13 }}>
             {SHOP_FEATURE_ICONS[f]} {SHOP_FEATURE_LABELS[f]}
+            {counts?.[f] ? (
+              <Text style={{ color: theme.colors.textSecondary }}> ✓{counts[f]}</Text>
+            ) : null}
           </Text>
         </View>
       ))}

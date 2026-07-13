@@ -25,16 +25,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
-import {
-  OpeningHours,
-  SHOP_FEATURE_ICONS,
-  SHOP_FEATURE_LABELS,
-  SHOP_FEATURES,
-  ShopFeature,
-  WEEKDAY_LABELS,
-  WEEKDAYS,
-  Weekday,
-} from '@/types';
+import { OpeningHours, ShopFeature, WEEKDAY_LABELS, WEEKDAYS, Weekday } from '@/types';
 
 const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -72,7 +63,9 @@ export function ShopFormScreen() {
   const [addressQuery, setAddressQuery] = useState('');
   const [geoResults, setGeoResults] = useState<GeocodingResult[]>([]);
   const [selected, setSelected] = useState<GeocodingResult | null>(null);
-  const [features, setFeatures] = useState<Set<ShopFeature>>(new Set());
+  // Besonderheiten werden nicht mehr hier gepflegt, sondern von der Community
+  // beim Bewerten abgestimmt. Bestehende Werte bleiben beim Bearbeiten unangetastet.
+  const [features, setFeatures] = useState<ShopFeature[]>([]);
   const [days, setDays] = useState<Record<Weekday, DayInput>>(emptyDays());
   const [busy, setBusy] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -90,7 +83,7 @@ export function ShopFormScreen() {
           latitude: shop.latitude,
           longitude: shop.longitude,
         });
-        setFeatures(new Set(shop.features ?? []));
+        setFeatures(shop.features ?? []);
         const nextDays = emptyDays();
         for (const day of WEEKDAYS) {
           const entry = shop.opening_hours?.[day];
@@ -119,15 +112,6 @@ export function ShopFormScreen() {
     } finally {
       setSearching(false);
     }
-  };
-
-  const toggleFeature = (f: ShopFeature) => {
-    setFeatures((prev) => {
-      const next = new Set(prev);
-      if (next.has(f)) next.delete(f);
-      else next.add(f);
-      return next;
-    });
   };
 
   const setDay = (day: Weekday, patch: Partial<DayInput>) =>
@@ -200,7 +184,7 @@ export function ShopFormScreen() {
       latitude: selected.latitude,
       longitude: selected.longitude,
       opening_hours,
-      features: [...features],
+      features,
       doener_preis: price.value,
     };
 
@@ -296,29 +280,10 @@ export function ShopFormScreen() {
         );
       })}
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Besonderheiten</Text>
-      <View style={styles.featureWrap}>
-        {SHOP_FEATURES.map((f) => {
-          const active = features.has(f);
-          return (
-            <Pressable
-              key={f}
-              onPress={() => toggleFeature(f)}
-              style={[
-                styles.featureChip,
-                {
-                  backgroundColor: active ? theme.colors.primary : theme.colors.surface,
-                  borderColor: active ? theme.colors.primary : theme.colors.border,
-                },
-              ]}
-            >
-              <Text style={{ color: active ? theme.colors.onPrimary : theme.colors.text }}>
-                {SHOP_FEATURE_ICONS[f]} {SHOP_FEATURE_LABELS[f]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 20 }}>
+        💡 Besonderheiten (Soßen, Fleischsorten, vegan …) werden nicht hier eingetragen,
+        sondern von der Community beim Bewerten bestätigt.
+      </Text>
 
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Öffnungszeiten</Text>
       {WEEKDAYS.map((day) => {
@@ -393,13 +358,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  featureChip: {
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  featureWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   geoResult: {
     borderRadius: 12,
     borderWidth: 1,

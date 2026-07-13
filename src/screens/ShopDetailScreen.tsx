@@ -15,7 +15,7 @@ import { Button } from '@/components/Button';
 import { FeatureBadges } from '@/components/FeatureBadges';
 import { OpeningHoursTable } from '@/components/OpeningHoursTable';
 import { StarRating } from '@/components/StarRating';
-import { fetchShop, fetchShopSummary } from '@/lib/api';
+import { fetchFeatureSummary, fetchShop, fetchShopSummary } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
 import { formatPrice } from '@/lib/geo';
@@ -26,6 +26,8 @@ import {
   RATING_CATEGORIES,
   RATING_CATEGORY_LABELS,
   Shop,
+  ShopFeature,
+  ShopFeatureSummary,
   ShopRatingSummary,
 } from '@/types';
 
@@ -38,13 +40,15 @@ export function ShopDetailScreen() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [summary, setSummary] = useState<ShopRatingSummary | null>(null);
+  const [featureSummary, setFeatureSummary] = useState<ShopFeatureSummary[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      Promise.all([fetchShop(shopId), fetchShopSummary(shopId)])
-        .then(([s, sum]) => {
+      Promise.all([fetchShop(shopId), fetchShopSummary(shopId), fetchFeatureSummary(shopId)])
+        .then(([s, sum, feats]) => {
           setShop(s);
           setSummary(sum);
+          setFeatureSummary(feats);
         })
         .catch((e: Error) => Alert.alert('Fehler', e.message));
     }, [shopId])
@@ -144,7 +148,15 @@ export function ShopDetailScreen() {
 
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Besonderheiten</Text>
-        <FeatureBadges features={shop.features ?? []} />
+        <FeatureBadges
+          features={featureSummary.filter((f) => f.score > 0).map((f) => f.feature)}
+          counts={Object.fromEntries(
+            featureSummary.filter((f) => f.score > 0).map((f) => [f.feature, f.bestaetigt])
+          ) as Partial<Record<ShopFeature, number>>}
+        />
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 10 }}>
+          Von der Community bestätigt – stimme bei deiner Bewertung mit ab.
+        </Text>
       </View>
 
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>

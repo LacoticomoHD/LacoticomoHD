@@ -17,14 +17,22 @@ export const RATING_CATEGORY_LABELS: Record<RatingCategory, string> = {
   wartezeit: 'Wartezeit',
 };
 
-/** Besonderheiten eines Ladens (Angebots-Merkmale). */
+/** Besonderheiten eines Ladens. Werden von der Community per Abstimmung gepflegt:
+ *  Nur Nutzer, die den Laden bewertet haben, dürfen abstimmen (✓ vorhanden / ✗ nicht
+ *  vorhanden); angezeigt wird eine Besonderheit nur bei positivem Stimmen-Saldo. */
 export const SHOP_FEATURES = [
   'kalb',
   'haehnchen',
+  'lamm',
+  'oktopus',
   'vegetarisch',
   'vegan',
   'halal',
   'hausgemachtes_brot',
+  'joghurtsosse',
+  'knoblauchsosse',
+  'scharfe_sosse',
+  'ayran_hausgemacht',
 ] as const;
 
 export type ShopFeature = (typeof SHOP_FEATURES)[number];
@@ -32,20 +40,44 @@ export type ShopFeature = (typeof SHOP_FEATURES)[number];
 export const SHOP_FEATURE_LABELS: Record<ShopFeature, string> = {
   kalb: 'Kalb',
   haehnchen: 'Hähnchen',
+  lamm: 'Lammfleisch',
+  oktopus: 'Oktopusfleisch',
   vegetarisch: 'Vegetarisch',
   vegan: 'Vegan',
   halal: 'Halal',
   hausgemachtes_brot: 'Hausgemachtes Brot',
+  joghurtsosse: 'Joghurtsoße',
+  knoblauchsosse: 'Knoblauchsoße',
+  scharfe_sosse: 'Scharfe Soße',
+  ayran_hausgemacht: 'Ayran aus eigener Herstellung',
 };
 
 export const SHOP_FEATURE_ICONS: Record<ShopFeature, string> = {
   kalb: '🐄',
   haehnchen: '🐔',
+  lamm: '🐑',
+  oktopus: '🐙',
   vegetarisch: '🥗',
   vegan: '🌱',
   halal: '☪️',
   hausgemachtes_brot: '🥖',
+  joghurtsosse: '🥣',
+  knoblauchsosse: '🧄',
+  scharfe_sosse: '🌶️',
+  ayran_hausgemacht: '🥤',
 };
+
+/** Stimme eines Nutzers zu einer Besonderheit: 1 = vorhanden, -1 = nicht vorhanden. */
+export type FeatureVote = 1 | -1;
+
+/** Aggregierte Abstimmung je Laden und Besonderheit (View shop_feature_summary). */
+export interface ShopFeatureSummary {
+  shop_id: string;
+  feature: ShopFeature;
+  bestaetigt: number;
+  widersprochen: number;
+  score: number;
+}
 
 export const WEEKDAYS = [
   'montag',

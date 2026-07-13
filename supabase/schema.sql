@@ -21,7 +21,7 @@ create table public.shops (
   created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),
   constraint valid_features check (
-    features <@ array['kalb', 'haehnchen', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot']::text[]
+    features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht']::text[]
   )
 );
 
@@ -44,6 +44,37 @@ create table public.ratings (
 
 create index ratings_shop_id_idx on public.ratings (shop_id);
 create index shops_created_by_idx on public.shops (created_by);
+
+-- ---------------------------------------------------------------------------
+-- Besonderheiten: Community-Abstimmung (1 = vorhanden, -1 = nicht vorhanden).
+-- Abstimmen darf nur, wer den Laden bewertet hat (siehe RLS unten) –
+-- Schutz gegen Spaß-Klicker. Angezeigt wird nur bei positivem Saldo.
+-- ---------------------------------------------------------------------------
+create table public.shop_feature_votes (
+  id         uuid primary key default gen_random_uuid(),
+  shop_id    uuid not null references public.shops (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  feature    text not null check (
+    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht')
+  ),
+  vote       smallint not null check (vote in (-1, 1)),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (shop_id, user_id, feature)
+);
+
+create index feature_votes_shop_id_idx on public.shop_feature_votes (shop_id);
+
+create view public.shop_feature_summary
+with (security_invoker = true) as
+select
+  shop_id,
+  feature,
+  (count(*) filter (where vote = 1))::int  as bestaetigt,
+  (count(*) filter (where vote = -1))::int as widersprochen,
+  coalesce(sum(vote), 0)::int              as score
+from public.shop_feature_votes
+group by shop_id, feature;
 
 -- ---------------------------------------------------------------------------
 -- Meldungen fehlerhafter Ladeneinträge
@@ -87,6 +118,7 @@ group by shop_id;
 alter table public.shops enable row level security;
 alter table public.ratings enable row level security;
 alter table public.reports enable row level security;
+alter table public.shop_feature_votes enable row level security;
 
 -- Läden: jeder Angemeldete darf lesen und anlegen; ändern/löschen nur, wer sie angelegt hat.
 create policy "shops_select" on public.shops
@@ -113,6 +145,26 @@ create policy "ratings_update_own" on public.ratings
   for update to authenticated using (user_id = auth.uid());
 
 create policy "ratings_delete_own" on public.ratings
+  for delete to authenticated using (user_id = auth.uid());
+
+-- Besonderheiten-Stimmen: lesen dürfen alle Angemeldeten; abstimmen darf nur,
+-- wer den Laden bewertet hat (Troll-Schutz); ändern/zurückziehen nur die eigene Stimme.
+create policy "feature_votes_select" on public.shop_feature_votes
+  for select to authenticated using (true);
+
+create policy "feature_votes_insert_own" on public.shop_feature_votes
+  for insert to authenticated with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from public.ratings r
+      where r.shop_id = shop_feature_votes.shop_id and r.user_id = auth.uid()
+    )
+  );
+
+create policy "feature_votes_update_own" on public.shop_feature_votes
+  for update to authenticated using (user_id = auth.uid());
+
+create policy "feature_votes_delete_own" on public.shop_feature_votes
   for delete to authenticated using (user_id = auth.uid());
 
 -- Meldungen: Angemeldete dürfen melden und ihre eigenen Meldungen sehen.
