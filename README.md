@@ -38,7 +38,7 @@ Google-Maps-Rezensionen so nicht gibt.
 | Bereich | Technologie |
 | --- | --- |
 | App | Expo / React Native, TypeScript |
-| Karte | `react-native-maps` mit OpenStreetMap-Tiles (`UrlTile`) |
+| Karte | MapLibre (`@maplibre/maplibre-react-native`) mit OpenStreetMap-Raster-Tiles – komplett ohne Google-/Apple-Kartendienste |
 | Geocoding | Nominatim (OpenStreetMap) |
 | Backend & Login | Supabase (PostgreSQL, Auth, Row Level Security) |
 | Navigation | React Navigation (Stack + Bottom Tabs) |

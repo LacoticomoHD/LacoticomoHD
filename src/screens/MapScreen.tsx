@@ -1,7 +1,13 @@
+import {
+  Camera,
+  MapView,
+  PointAnnotation,
+  UserLocation,
+  type CameraRef,
+} from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -13,24 +19,34 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { ShopWithSummary } from '@/types';
 
-// Start: Berlin Mitte – bis der Nutzer seinen Standort freigibt.
-const INITIAL_REGION = {
-  latitude: 52.52,
-  longitude: 13.405,
-  latitudeDelta: 0.08,
-  longitudeDelta: 0.08,
-};
+// Start: Berlin Mitte – bis der Nutzer seinen Standort freigibt. [Längengrad, Breitengrad]
+const INITIAL_CENTER: [number, number] = [13.405, 52.52];
 
 // Für Produktivbetrieb eigenen Tile-Anbieter in .env setzen (EXPO_PUBLIC_TILE_URL),
 // z. B. MapTiler – die offiziellen OSM-Server sind nicht für App-Massenbetrieb gedacht.
 const OSM_TILE_URL =
   process.env.EXPO_PUBLIC_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
+// MapLibre rendert komplett ohne Google/Apple-Dienste – reines OpenStreetMap.
+const MAP_STYLE = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: [OSM_TILE_URL],
+      tileSize: 256,
+      attribution: '© OpenStreetMap-Mitwirkende',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
+
 export function MapScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<CameraRef>(null);
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const { matchesFilters } = useFilters();
 
   const loadShops = useCallback(() => {
@@ -42,49 +58,53 @@ export function MapScreen() {
   // Bei jedem Fokus neu laden, damit neue Läden/Bewertungen sofort sichtbar sind.
   useFocusEffect(loadShops);
 
+  useEffect(() => {
+    Location.getForegroundPermissionsAsync().then(({ status }) =>
+      setHasLocationPermission(status === 'granted')
+    );
+  }, []);
+
   const goToMyLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Standort', 'Ohne Standortfreigabe kann die Karte nicht zentriert werden.');
       return;
     }
+    setHasLocationPermission(true);
     const pos = await Location.getCurrentPositionAsync({});
-    mapRef.current?.animateToRegion(
-      {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        latitudeDelta: 0.03,
-        longitudeDelta: 0.03,
-      },
-      500
-    );
+    cameraRef.current?.setCamera({
+      centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
+      zoomLevel: 14,
+      animationDuration: 500,
+    });
   };
 
   return (
     <View style={styles.flex}>
-      <MapView
-        ref={mapRef}
-        style={styles.flex}
-        initialRegion={INITIAL_REGION}
-        // Eigene OSM-Tiles statt der Standard-Karte (Google/Apple).
-        mapType={undefined}
-      >
-        <UrlTile urlTemplate={OSM_TILE_URL} maximumZ={19} shouldReplaceMapContent />
+      <MapView style={styles.flex} mapStyle={MAP_STYLE} attributionEnabled logoEnabled={false}>
+        <Camera defaultSettings={{ centerCoordinate: INITIAL_CENTER, zoomLevel: 11 }} ref={cameraRef} />
+        {hasLocationPermission ? <UserLocation /> : null}
         {shops.filter(matchesFilters).map((shop) => {
           const open = isOpenNow(shop.opening_hours ?? {});
-          const avg = shop.summary?.avg_gesamt;
           return (
-            <Marker
+            <PointAnnotation
               key={shop.id}
-              coordinate={{ latitude: shop.latitude, longitude: shop.longitude }}
-              title={shop.name}
-              description={
-                (avg != null ? `★ ${avg.toFixed(1)} · ` : 'Noch keine Bewertung · ') +
-                (open ? 'Jetzt geöffnet' : 'Geschlossen')
-              }
-              pinColor={open ? theme.colors.success : theme.colors.danger}
-              onCalloutPress={() => navigation.navigate('ShopDetail', { shopId: shop.id })}
-            />
+              id={shop.id}
+              coordinate={[shop.longitude, shop.latitude]}
+              onSelected={() => navigation.navigate('ShopDetail', { shopId: shop.id })}
+            >
+              <View
+                style={[
+                  styles.pin,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: open ? theme.colors.success : theme.colors.danger,
+                  },
+                ]}
+              >
+                <Text style={styles.pinEmoji}>🥙</Text>
+              </View>
+            </PointAnnotation>
           );
         })}
       </MapView>
@@ -145,4 +165,14 @@ const styles = StyleSheet.create({
   filterOverlay: { left: 0, position: 'absolute', right: 0, top: 4 },
   flex: { flex: 1 },
   locateFab: { bottom: 92, right: 16 },
+  pin: {
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 3,
+    elevation: 3,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  pinEmoji: { fontSize: 20 },
 });
