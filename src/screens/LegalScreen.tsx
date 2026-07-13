@@ -3,18 +3,17 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeContext';
 
-// WICHTIG: Vor der Veröffentlichung die [Platzhalter] mit echten Angaben füllen!
-// Ein Impressum mit ladungsfähiger Anschrift ist in Deutschland Pflicht (§ 5 DDG),
+// Impressum mit ladungsfähiger Anschrift ist in Deutschland Pflicht (§ 5 DDG),
 // die Datenschutzerklärung nach DSGVO ebenso.
 
-const IMPRESSUM = `[Vor- und Nachname bzw. Firma]
-[Straße und Hausnummer]
-[PLZ und Ort]
+const IMPRESSUM = `Sebastian Of
+Frankfurter Straße 18
+76344 Eggenstein-Leopoldshafen
 Deutschland
 
-E-Mail: [deine Kontakt-E-Mail]
+E-Mail: sebastianof13@googlemail.com
 
-Verantwortlich für den Inhalt: [Vor- und Nachname]`;
+Verantwortlich für den Inhalt: Sebastian Of`;
 
 const DATENSCHUTZ = [
   {

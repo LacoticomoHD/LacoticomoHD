@@ -22,13 +22,17 @@ import { ShopWithSummary } from '@/types';
 // Start: Berlin Mitte – bis der Nutzer seinen Standort freigibt. [Längengrad, Breitengrad]
 const INITIAL_CENTER: [number, number] = [13.405, 52.52];
 
-// Für Produktivbetrieb eigenen Tile-Anbieter in .env setzen (EXPO_PUBLIC_TILE_URL),
-// z. B. MapTiler – die offiziellen OSM-Server sind nicht für App-Massenbetrieb gedacht.
+// Kartenstil: Bevorzugt eine komplette Style-URL (z. B. MapTiler-Vektorkarte) aus
+// EXPO_PUBLIC_MAP_STYLE_URL; alternativ Raster-Tiles über EXPO_PUBLIC_TILE_URL.
+// Ohne Konfiguration fallen wir auf die offiziellen OSM-Server zurück
+// (nur für Entwicklung – nicht für App-Massenbetrieb gedacht).
+const MAP_STYLE_URL = process.env.EXPO_PUBLIC_MAP_STYLE_URL;
+
 const OSM_TILE_URL =
   process.env.EXPO_PUBLIC_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 // MapLibre rendert komplett ohne Google/Apple-Dienste – reines OpenStreetMap.
-const MAP_STYLE = {
+const MAP_STYLE: string | object = MAP_STYLE_URL ?? {
   version: 8,
   sources: {
     osm: {
@@ -40,6 +44,10 @@ const MAP_STYLE = {
   },
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
+
+const ATTRIBUTION_TEXT = MAP_STYLE_URL?.includes('maptiler')
+  ? '© MapTiler © OpenStreetMap-Mitwirkende'
+  : '© OpenStreetMap-Mitwirkende';
 
 export function MapScreen() {
   const { theme } = useTheme();
@@ -117,7 +125,7 @@ export function MapScreen() {
       {/* OSM-Attribution ist lizenzrechtlich Pflicht. */}
       <View style={[styles.attribution, { backgroundColor: theme.colors.surface }]}>
         <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>
-          © OpenStreetMap-Mitwirkende
+          {ATTRIBUTION_TEXT}
         </Text>
       </View>
 
