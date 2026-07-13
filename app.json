@@ -21,7 +21,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#C0392B"
       },
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true
     },
     "plugins": [
@@ -42,7 +45,9 @@
         {
           "locationWhenInUsePermission": "Don Döner nutzt deinen Standort, um Dönerläden in deiner Nähe anzuzeigen."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ]
   }
 }
