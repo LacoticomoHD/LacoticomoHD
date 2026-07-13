@@ -18,6 +18,7 @@ import { MyRatingsScreen } from '@/screens/MyRatingsScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { RateShopScreen } from '@/screens/RateShopScreen';
 import { ReportShopScreen } from '@/screens/ReportShopScreen';
+import { ReportsInboxScreen } from '@/screens/ReportsInboxScreen';
 import { ShopDetailScreen } from '@/screens/ShopDetailScreen';
 import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
@@ -144,6 +145,11 @@ export function RootNavigator() {
             name="Favorites"
             component={FavoritesScreen}
             options={{ title: 'Meine Stammläden' }}
+          />
+          <Stack.Screen
+            name="ReportsInbox"
+            component={ReportsInboxScreen}
+            options={{ title: 'Meldungen' }}
           />
           <Stack.Screen
             name="Legal"

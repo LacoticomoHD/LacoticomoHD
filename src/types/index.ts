@@ -160,8 +160,35 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
 
 /** Eigene Bewertung inkl. Basisdaten des bewerteten Ladens (für die Profil-Übersicht). */
 export type RatingWithShop = Rating & {
-  shops: Pick<Shop, 'id' | 'name' | 'address'> | null;
+  shops: Pick<Shop, 'id' | 'name' | 'address' | 'city'> | null;
 };
+
+/** Meldung inkl. Ladendaten (für das Admin-Postfach). */
+export interface ReportWithShop {
+  id: string;
+  shop_id: string;
+  reason: ReportReason;
+  details: string | null;
+  status: 'offen' | 'erledigt';
+  created_at: string;
+  shops: Pick<Shop, 'id' | 'name' | 'address'> | null;
+}
+
+/** Eintrag der Dönerpreis-Historie. */
+export interface PriceHistoryEntry {
+  id: string;
+  shop_id: string;
+  preis: number;
+  recorded_at: string;
+}
+
+/** Öffnungszeiten-Feedback eines Ladens (View hours_vote_summary). */
+export interface HoursVoteSummary {
+  shop_id: string;
+  bestaetigt: number;
+  veraltet: number;
+  score: number;
+}
 
 export interface Rating {
   id: string;

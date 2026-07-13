@@ -2,10 +2,13 @@ import {
   CityStats,
   FeatureVote,
   GeoBounds,
+  HoursVoteSummary,
   OpeningHours,
+  PriceHistoryEntry,
   Rating,
   RatingWithShop,
   ReportReason,
+  ReportWithShop,
   Shop,
   ShopFeature,
   ShopFeatureSummary,
@@ -292,13 +295,15 @@ export async function createShop(input: NewShopInput, userId: string): Promise<S
 export async function updateShop(shopId: string, input: NewShopInput) {
   const { error } = await supabase.from('shops').update(input).eq('id', shopId);
   if (error) throw new Error(error.message);
+  // Zeiten wurden ggf. korrigiert – das Öffnungszeiten-Feedback beginnt von vorn.
+  await supabase.from('hours_votes').delete().eq('shop_id', shopId);
 }
 
 /** Alle eigenen Bewertungen inkl. Ladendaten für die Profil-Übersicht. */
 export async function fetchMyRatings(userId: string): Promise<RatingWithShop[]> {
   const { data, error } = await supabase
     .from('ratings')
-    .select('*, shops(id, name, address)')
+    .select('*, shops(id, name, address, city)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -325,6 +330,93 @@ export async function createReport(
  *  Selbst angelegte Läden bleiben als Community-Daten erhalten. */
 export async function deleteOwnAccount() {
   const { error } = await supabase.rpc('delete_own_account');
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Meldungs-Postfach
+// ---------------------------------------------------------------------------
+
+/** Ist der Nutzer als Admin eingetragen (Tabelle app_admins)? */
+export async function fetchIsAdmin(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return false;
+  return data != null;
+}
+
+/** Alle Meldungen inkl. Ladendaten – per RLS nur für Admins sichtbar. */
+export async function fetchAllReports(): Promise<ReportWithShop[]> {
+  const { data, error } = await supabase
+    .from('reports')
+    .select('id, shop_id, reason, details, status, created_at, shops(id, name, address)')
+    .order('status', { ascending: true })
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data as unknown as ReportWithShop[];
+}
+
+export async function setReportStatus(reportId: string, status: 'offen' | 'erledigt') {
+  const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Dönerpreis-Historie
+// ---------------------------------------------------------------------------
+
+export async function fetchPriceHistory(shopId: string): Promise<PriceHistoryEntry[]> {
+  const { data, error } = await supabase
+    .from('price_history')
+    .select('*')
+    .eq('shop_id', shopId)
+    .order('recorded_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data as PriceHistoryEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// Öffnungszeiten-Feedback („Stimmen die Zeiten noch?")
+// ---------------------------------------------------------------------------
+
+export async function fetchHoursVoteSummary(shopId: string): Promise<HoursVoteSummary | null> {
+  const { data, error } = await supabase
+    .from('hours_vote_summary')
+    .select('*')
+    .eq('shop_id', shopId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as HoursVoteSummary | null;
+}
+
+export async function fetchMyHoursVote(shopId: string, userId: string): Promise<1 | -1 | 0> {
+  const { data, error } = await supabase
+    .from('hours_votes')
+    .select('vote')
+    .eq('shop_id', shopId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return 0;
+  return (data?.vote as 1 | -1 | undefined) ?? 0;
+}
+
+/** Setzt die eigene Stimme; 0 zieht sie zurück. */
+export async function setHoursVote(shopId: string, userId: string, vote: 1 | -1 | 0) {
+  if (vote === 0) {
+    const { error } = await supabase
+      .from('hours_votes')
+      .delete()
+      .eq('shop_id', shopId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { error } = await supabase
+    .from('hours_votes')
+    .upsert({ shop_id: shopId, user_id: userId, vote }, { onConflict: 'shop_id,user_id' });
   if (error) throw new Error(error.message);
 }
 

@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
-import { deleteOwnAccount } from '@/lib/api';
+import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
+import { RatingWithShop } from '@/types';
+
+/** Döner-Pass: Abzeichen nach Anzahl bewerteter Läden. */
+const BADGES = [
+  { min: 100, label: '🥇 Gold-Döner' },
+  { min: 25, label: '🥈 Silber-Döner' },
+  { min: 5, label: '🥉 Bronze-Döner' },
+] as const;
+
+function badgeInfo(count: number): { current: string | null; next: string | null; missing: number } {
+  const current = BADGES.find((b) => count >= b.min)?.label ?? null;
+  const next = [...BADGES].reverse().find((b) => count < b.min) ?? null;
+  return { current, next: next?.label ?? null, missing: next ? next.min - count : 0 };
+}
 
 const MODES: { key: ThemeMode; label: string }[] = [
   { key: 'system', label: 'System' },
@@ -20,6 +34,21 @@ export function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [deleting, setDeleting] = useState(false);
+  const [myRatings, setMyRatings] = useState<RatingWithShop[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      fetchMyRatings(user.id).then(setMyRatings).catch(() => {});
+      fetchIsAdmin(user.id).then(setIsAdmin);
+    }, [user])
+  );
+
+  const cityCount = new Set(
+    myRatings.map((r) => r.shops?.city).filter((c): c is string => Boolean(c))
+  ).size;
+  const badge = badgeInfo(myRatings.length);
 
   const confirmSignOut = () =>
     Alert.alert('Abmelden', 'Möchtest du dich wirklich abmelden?', [
@@ -111,6 +140,51 @@ export function ProfileScreen() {
         </Text>
       </View>
 
+      <View
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>🎖️ Dein Döner-Pass</Text>
+        <View style={styles.passRow}>
+          <View style={styles.passStat}>
+            <Text style={[styles.passNumber, { color: theme.colors.primary }]}>
+              {myRatings.length}
+            </Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              {myRatings.length === 1 ? 'Laden bewertet' : 'Läden bewertet'}
+            </Text>
+          </View>
+          <View style={styles.passStat}>
+            <Text style={[styles.passNumber, { color: theme.colors.primary }]}>{cityCount}</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              {cityCount === 1 ? 'Stadt erkundet' : 'Städte erkundet'}
+            </Text>
+          </View>
+        </View>
+        <Text style={{ color: theme.colors.text, marginTop: 10 }}>
+          {badge.current ?? 'Noch kein Abzeichen'}
+          {badge.next
+            ? `  ·  noch ${badge.missing} ${badge.missing === 1 ? 'Bewertung' : 'Bewertungen'} bis ${badge.next}`
+            : badge.current
+              ? '  ·  Höchststufe erreicht! 👑'
+              : ''}
+        </Text>
+      </View>
+
+      {isAdmin ? (
+        <Pressable
+          onPress={() => navigation.navigate('ReportsInbox')}
+          style={[
+            styles.legalLink,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
+            🚩 Meldungen (Admin)
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary }}>›</Text>
+        </Pressable>
+      ) : null}
+
       <Pressable
         onPress={() => navigation.navigate('Favorites')}
         style={[
@@ -182,5 +256,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modeRow: { flexDirection: 'row', gap: 10 },
+  passNumber: { fontSize: 28, fontWeight: '800' },
+  passRow: { flexDirection: 'row', gap: 24 },
+  passStat: { alignItems: 'center' },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
 });

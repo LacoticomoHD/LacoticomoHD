@@ -19,9 +19,13 @@ import {
   addFavorite,
   fetchFavoriteIds,
   fetchFeatureSummary,
+  fetchHoursVoteSummary,
+  fetchMyHoursVote,
+  fetchPriceHistory,
   fetchShop,
   fetchShopSummary,
   removeFavorite,
+  setHoursVote,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
@@ -30,6 +34,8 @@ import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
+  HoursVoteSummary,
+  PriceHistoryEntry,
   RATING_CATEGORIES,
   RATING_CATEGORY_LABELS,
   Shop,
@@ -50,23 +56,49 @@ export function ShopDetailScreen() {
   const [featureSummary, setFeatureSummary] = useState<ShopFeatureSummary[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryEntry[]>([]);
+  const [hoursVotes, setHoursVotes] = useState<HoursVoteSummary | null>(null);
+  const [myHoursVote, setMyHoursVote] = useState<1 | -1 | 0>(0);
 
   useFocusEffect(
     useCallback(() => {
-      Promise.all([fetchShop(shopId), fetchShopSummary(shopId), fetchFeatureSummary(shopId)])
-        .then(([s, sum, feats]) => {
+      Promise.all([
+        fetchShop(shopId),
+        fetchShopSummary(shopId),
+        fetchFeatureSummary(shopId),
+        fetchPriceHistory(shopId),
+        fetchHoursVoteSummary(shopId),
+      ])
+        .then(([s, sum, feats, prices, hv]) => {
           setShop(s);
           setSummary(sum);
           setFeatureSummary(feats);
+          setPriceHistory(prices);
+          setHoursVotes(hv);
         })
         .catch((e: Error) => Alert.alert('Fehler', e.message));
       if (user) {
         fetchFavoriteIds(user.id)
           .then((ids) => setIsFavorite(ids.has(shopId)))
           .catch(() => {});
+        fetchMyHoursVote(shopId, user.id).then(setMyHoursVote);
       }
     }, [shopId, user])
   );
+
+  const voteHours = async (vote: 1 | -1) => {
+    if (!user) return;
+    const next = myHoursVote === vote ? 0 : vote;
+    const previous = myHoursVote;
+    setMyHoursVote(next);
+    try {
+      await setHoursVote(shopId, user.id, next);
+      setHoursVotes(await fetchHoursVoteSummary(shopId));
+    } catch (e) {
+      setMyHoursVote(previous);
+      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    }
+  };
 
   const toggleFavorite = async () => {
     if (!user || favoriteBusy) return;
@@ -123,6 +155,22 @@ export function ShopDetailScreen() {
           </Text>
         ) : null}
       </View>
+
+      {/* Preisverlauf, sobald es mehr als einen erfassten Preis gibt */}
+      {priceHistory.length >= 2 ? (
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+          📈 Preisverlauf:{' '}
+          {priceHistory
+            .map((p) => formatPrice(p.preis))
+            .join(' → ')}{' '}
+          (seit{' '}
+          {new Date(priceHistory[0].recorded_at).toLocaleDateString('de-DE', {
+            month: '2-digit',
+            year: 'numeric',
+          })}
+          )
+        </Text>
+      ) : null}
 
       {/* Navigation zum Laden über die System-Karten-App */}
       <View
@@ -198,7 +246,45 @@ export function ShopDetailScreen() {
 
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Öffnungszeiten</Text>
+        {hoursVotes && hoursVotes.score <= -2 ? (
+          <Text style={{ color: theme.colors.danger, fontSize: 13, marginBottom: 8 }}>
+            ⚠️ Laut Community sind diese Zeiten möglicherweise veraltet
+          </Text>
+        ) : null}
         <OpeningHoursTable hours={shop.opening_hours ?? {}} />
+        <View style={[styles.hoursVoteRow, { borderTopColor: theme.colors.border }]}>
+          <Text style={{ color: theme.colors.textSecondary, flex: 1, fontSize: 13 }}>
+            Stimmen die Zeiten?
+          </Text>
+          <Pressable
+            onPress={() => voteHours(1)}
+            style={[
+              styles.hoursVoteButton,
+              {
+                backgroundColor:
+                  myHoursVote === 1 ? theme.colors.success : theme.colors.surfaceVariant,
+              },
+            ]}
+          >
+            <Text style={{ color: myHoursVote === 1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
+              👍 {hoursVotes?.bestaetigt ?? 0}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => voteHours(-1)}
+            style={[
+              styles.hoursVoteButton,
+              {
+                backgroundColor:
+                  myHoursVote === -1 ? theme.colors.danger : theme.colors.surfaceVariant,
+              },
+            ]}
+          >
+            <Text style={{ color: myHoursVote === -1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
+              👎 {hoursVotes?.veraltet ?? 0}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <Button
@@ -241,6 +327,19 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   content: { padding: 20, paddingBottom: 40, gap: 0 },
   favoriteButton: { padding: 2 },
+  hoursVoteButton: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  hoursVoteRow: {
+    alignItems: 'center',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+  },
   name: { flex: 1, fontSize: 26, fontWeight: '800' },
   nameRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
   reportLink: { alignSelf: 'center', marginTop: 16, padding: 4 },

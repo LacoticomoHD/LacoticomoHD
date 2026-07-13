@@ -100,6 +100,21 @@ Für Store-Builds (`.aab`/`.ipa`) empfiehlt sich [EAS Build](https://docs.expo.d
   `supabase/upgrade_v1_zu_v2.sql` (Meldungen + Konto-Löschung), dann
   `supabase/upgrade_v2_zu_v3.sql` (Dönerpreis). Frische Datenbanken brauchen nur `schema.sql`.
 
+## Datenbank-Backup (wichtig!)
+
+Der kostenlose Supabase-Tarif macht nur begrenzte automatische Backups. Die Läden- und
+Bewertungsdaten sind der wertvollste Teil der App – regelmäßig sichern:
+
+- **Einfach (Dashboard):** Supabase → Database → Backups zeigt den letzten automatischen
+  Stand. Zusätzlich per SQL Editor exportieren: `Table Editor → shops/ratings → Export as CSV`.
+- **Vollständig (Kommandozeile, empfohlen):** Mit dem Datenbank-Passwort aus den
+  Projekteinstellungen (Connection String unter Project Settings → Database):
+  ```bash
+  pg_dump "postgresql://postgres:[DB-PASSWORT]@db.[PROJEKT-REF].supabase.co:5432/postgres" \
+    --schema=public --data-only > dondoener-backup-$(date +%F).sql
+  ```
+  Einmal im Monat reicht anfangs; die Datei sicher ablegen (Cloud-Speicher o. Ä.).
+
 ## Hinweise zu OpenStreetMap
 
 - Die Karte lädt Tiles von `tile.openstreetmap.org`. Die Attribution

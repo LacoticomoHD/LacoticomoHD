@@ -7,6 +7,7 @@ export type RootStackParamList = {
   EditShop: { shopId: string };
   MyRatings: undefined;
   Favorites: undefined;
+  ReportsInbox: undefined;
   Legal: undefined;
 };
 

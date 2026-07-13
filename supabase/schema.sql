@@ -139,10 +139,73 @@ create table public.reports (
     reason in ('falsche_adresse', 'falsche_oeffnungszeiten', 'falscher_preis', 'dauerhaft_geschlossen', 'duplikat', 'sonstiges')
   ),
   details    text check (char_length(details) <= 500),
+  status     text not null default 'offen' check (status in ('offen', 'erledigt')),
   created_at timestamptz not null default now()
 );
 
 create index reports_shop_id_idx on public.reports (shop_id);
+
+-- ---------------------------------------------------------------------------
+-- Admins: sehen und bearbeiten Meldungen in der App.
+-- Nach der ersten Registrierung den Betreiber eintragen:
+--   insert into public.app_admins (user_id)
+--   select id from auth.users order by created_at limit 1;
+-- ---------------------------------------------------------------------------
+create table public.app_admins (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+
+-- ---------------------------------------------------------------------------
+-- Dönerpreis-Historie: jede Preisänderung wird per Trigger protokolliert
+-- ---------------------------------------------------------------------------
+create table public.price_history (
+  id          uuid primary key default gen_random_uuid(),
+  shop_id     uuid not null references public.shops (id) on delete cascade,
+  preis       numeric(5, 2) not null,
+  recorded_at timestamptz not null default now()
+);
+
+create index price_history_shop_idx on public.price_history (shop_id, recorded_at);
+
+create or replace function public.log_price_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.doener_preis is not null
+     and (tg_op = 'INSERT' or new.doener_preis is distinct from old.doener_preis) then
+    insert into public.price_history (shop_id, preis) values (new.id, new.doener_preis);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger shops_price_log
+  after insert or update of doener_preis on public.shops
+  for each row execute function public.log_price_change();
+
+-- ---------------------------------------------------------------------------
+-- Öffnungszeiten-Feedback: stimmen die Zeiten noch? (👍 = 1 / 👎 = -1)
+-- ---------------------------------------------------------------------------
+create table public.hours_votes (
+  shop_id    uuid not null references public.shops (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  vote       smallint not null check (vote in (-1, 1)),
+  created_at timestamptz not null default now(),
+  primary key (shop_id, user_id)
+);
+
+create view public.hours_vote_summary
+with (security_invoker = true) as
+select
+  shop_id,
+  (count(*) filter (where vote = 1))::int  as bestaetigt,
+  (count(*) filter (where vote = -1))::int as veraltet,
+  coalesce(sum(vote), 0)::int              as score
+from public.hours_votes
+group by shop_id;
 
 -- ---------------------------------------------------------------------------
 -- Aggregierte Bewertungen pro Laden (von der App gelesen)
@@ -172,6 +235,36 @@ alter table public.ratings enable row level security;
 alter table public.reports enable row level security;
 alter table public.shop_feature_votes enable row level security;
 alter table public.favorites enable row level security;
+alter table public.app_admins enable row level security;
+alter table public.price_history enable row level security;
+alter table public.hours_votes enable row level security;
+
+-- Admins: jeder sieht nur den eigenen Eintrag (reicht für die Admin-Erkennung).
+create policy "admins_select_self" on public.app_admins
+  for select to authenticated using (user_id = auth.uid());
+
+-- Preis-Historie: lesbar für alle Angemeldeten, geschrieben nur per Trigger.
+create policy "price_history_select" on public.price_history
+  for select to authenticated using (true);
+
+-- Öffnungszeiten-Feedback: eigene Stimme verwalten; Laden-Ersteller darf nach
+-- einer Korrektur alle Stimmen zurücksetzen.
+create policy "hours_votes_select" on public.hours_votes
+  for select to authenticated using (true);
+
+create policy "hours_votes_insert_own" on public.hours_votes
+  for insert to authenticated with check (user_id = auth.uid());
+
+create policy "hours_votes_update_own" on public.hours_votes
+  for update to authenticated using (user_id = auth.uid());
+
+create policy "hours_votes_delete_own" on public.hours_votes
+  for delete to authenticated using (user_id = auth.uid());
+
+create policy "hours_votes_delete_owner" on public.hours_votes
+  for delete to authenticated using (
+    exists (select 1 from public.shops s where s.id = shop_id and s.created_by = auth.uid())
+  );
 
 -- Favoriten: jeder verwaltet nur seine eigenen.
 create policy "favorites_select_own" on public.favorites
@@ -237,6 +330,16 @@ create policy "reports_insert_own" on public.reports
 
 create policy "reports_select_own" on public.reports
   for select to authenticated using (user_id = auth.uid());
+
+create policy "reports_select_admin" on public.reports
+  for select to authenticated using (
+    exists (select 1 from public.app_admins a where a.user_id = auth.uid())
+  );
+
+create policy "reports_update_admin" on public.reports
+  for update to authenticated using (
+    exists (select 1 from public.app_admins a where a.user_id = auth.uid())
+  );
 
 -- ---------------------------------------------------------------------------
 -- Konto-Selbstlöschung (Pflicht für App-Store-Apps mit Registrierung)
