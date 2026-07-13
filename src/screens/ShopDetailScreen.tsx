@@ -209,6 +209,12 @@ export function ShopDetailScreen() {
             </Text>
           ) : null}
         </View>
+        {summary && summary.verifiziert_count > 0 ? (
+          <Text style={{ color: theme.colors.success, fontSize: 12, marginBottom: 8 }}>
+            📍 {summary.verifiziert_count} von {summary.rating_count}{' '}
+            {summary.rating_count === 1 ? 'Bewertung' : 'Bewertungen'} vor Ort verifiziert
+          </Text>
+        ) : null}
         {summary && summary.rating_count > 0 ? (
           RATING_CATEGORIES.map((cat) => {
             const value = summary[`avg_${cat}`] ?? 0;
@@ -289,7 +295,14 @@ export function ShopDetailScreen() {
 
       <Button
         title="Jetzt bewerten"
-        onPress={() => navigation.navigate('RateShop', { shopId: shop.id, shopName: shop.name })}
+        onPress={() =>
+          navigation.navigate('RateShop', {
+            shopId: shop.id,
+            shopName: shop.name,
+            latitude: shop.latitude,
+            longitude: shop.longitude,
+          })
+        }
       />
       {user && shop.created_by === user.id ? (
         <Pressable

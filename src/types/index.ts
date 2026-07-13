@@ -199,6 +199,8 @@ export interface Rating {
   sauberkeit: number;
   preis_leistung: number;
   wartezeit: number;
+  /** true, wenn der Nutzer beim Bewerten nachweislich in Ladennähe war. */
+  verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -207,6 +209,8 @@ export interface Rating {
 export interface ShopRatingSummary {
   shop_id: string;
   rating_count: number;
+  /** Anzahl der vor Ort verifizierten Bewertungen. */
+  verifiziert_count: number;
   avg_geschmack: number | null;
   avg_freundlichkeit: number | null;
   avg_sauberkeit: number | null;
@@ -215,4 +219,8 @@ export interface ShopRatingSummary {
   avg_gesamt: number | null;
 }
 
-export type ShopWithSummary = Shop & { summary: ShopRatingSummary | null };
+export type ShopWithSummary = Shop & {
+  summary: ShopRatingSummary | null;
+  /** Preis-Leistungs-Score (Sterne pro Euro), falls Preis und Bewertung vorliegen. */
+  value_score?: number | null;
+};

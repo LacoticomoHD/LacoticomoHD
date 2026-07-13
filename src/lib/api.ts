@@ -21,35 +21,41 @@ import { supabase } from './supabase';
 /** Zeile der View shops_overview: Laden + Bewertungsschnitt + bestätigte Besonderheiten. */
 interface OverviewRow extends Shop {
   rating_count: number;
+  verifiziert_count: number;
   avg_geschmack: number | null;
   avg_freundlichkeit: number | null;
   avg_sauberkeit: number | null;
   avg_preis_leistung: number | null;
   avg_wartezeit: number | null;
   avg_gesamt: number | null;
+  value_score: number | null;
   features_confirmed: ShopFeature[];
 }
 
 function mapOverviewRow(row: OverviewRow): ShopWithSummary {
   const {
     rating_count,
+    verifiziert_count,
     avg_geschmack,
     avg_freundlichkeit,
     avg_sauberkeit,
     avg_preis_leistung,
     avg_wartezeit,
     avg_gesamt,
+    value_score,
     features_confirmed,
     ...shop
   } = row;
   return {
     ...shop,
     features: features_confirmed ?? [],
+    value_score,
     summary:
       rating_count > 0
         ? {
             shop_id: shop.id,
             rating_count,
+            verifiziert_count,
             avg_geschmack,
             avg_freundlichkeit,
             avg_sauberkeit,
@@ -90,20 +96,28 @@ export async function searchShops(query: string, limit = 50): Promise<ShopWithSu
   return (data as OverviewRow[]).map(mapOverviewRow);
 }
 
-/** Bestenliste: Top-Läden nach Gesamtschnitt, optional auf eine Stadt begrenzt. */
+export type TopShopsMode = 'rating' | 'value';
+
+/** Bestenliste: Top-Läden nach Gesamtschnitt oder Preis-Leistung (Sterne pro Euro),
+ *  optional auf eine Stadt begrenzt. */
 export async function fetchTopShops(
   city: string | null,
+  mode: TopShopsMode = 'rating',
   limit = 10
 ): Promise<ShopWithSummary[]> {
-  let query = supabase
-    .from('shops_overview')
-    .select('*')
-    .gt('rating_count', 0)
-    .order('avg_gesamt', { ascending: false })
-    .order('rating_count', { ascending: false })
-    .limit(limit);
+  let query = supabase.from('shops_overview').select('*').gt('rating_count', 0);
+  if (mode === 'value') {
+    query = query
+      .not('value_score', 'is', null)
+      .order('value_score', { ascending: false })
+      .order('rating_count', { ascending: false });
+  } else {
+    query = query
+      .order('avg_gesamt', { ascending: false })
+      .order('rating_count', { ascending: false });
+  }
   if (city) query = query.eq('city', city);
-  const { data, error } = await query;
+  const { data, error } = await query.limit(limit);
   if (error) throw new Error(error.message);
   return (data as OverviewRow[]).map(mapOverviewRow);
 }
@@ -259,12 +273,24 @@ export interface RatingInput {
   wartezeit: number;
 }
 
-/** Legt die Bewertung an oder aktualisiert die bestehende (eine pro Nutzer und Laden). */
-export async function upsertRating(shopId: string, userId: string, input: RatingInput) {
+/** Legt die Bewertung an oder aktualisiert die bestehende (eine pro Nutzer und Laden).
+ *  `verified` = Nutzer war beim Bewerten nachweislich in Ladennähe. */
+export async function upsertRating(
+  shopId: string,
+  userId: string,
+  input: RatingInput,
+  verified: boolean
+) {
   const { error } = await supabase
     .from('ratings')
     .upsert(
-      { shop_id: shopId, user_id: userId, ...input, updated_at: new Date().toISOString() },
+      {
+        shop_id: shopId,
+        user_id: userId,
+        ...input,
+        verified,
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: 'shop_id,user_id' }
     );
   if (error) throw new Error(error.message);

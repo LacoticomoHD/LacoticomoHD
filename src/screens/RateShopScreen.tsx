@@ -1,3 +1,4 @@
+import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -12,6 +13,7 @@ import {
   upsertRating,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
@@ -41,11 +43,12 @@ export function RateShopScreen() {
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'RateShop'>>();
   const navigation = useNavigation();
-  const { shopId, shopName } = route.params;
+  const { shopId, shopName, latitude, longitude } = route.params;
 
   const [values, setValues] = useState<RatingInput>(EMPTY);
   const [votes, setVotes] = useState<VoteState>({});
   const [existing, setExisting] = useState(false);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -54,6 +57,7 @@ export function RateShopScreen() {
       .then((rating) => {
         if (rating) {
           setExisting(true);
+          setAlreadyVerified(rating.verified);
           setValues({
             geschmack: rating.geschmack,
             freundlichkeit: rating.freundlichkeit,
@@ -80,6 +84,21 @@ export function RateShopScreen() {
       return { ...prev, [feature]: next };
     });
 
+  /** Vor-Ort-Check: Ist der Nutzer gerade in Ladennähe (< 150 m)?
+   *  Es wird nur ja/nein gespeichert, nie der Standort selbst. */
+  const checkOnSite = async (): Promise<boolean> => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return false;
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return distanceKm(pos.coords.latitude, pos.coords.longitude, latitude, longitude) < 0.15;
+    } catch {
+      return false;
+    }
+  };
+
   const submit = async () => {
     if (!user) return;
     if (RATING_CATEGORIES.some((cat) => values[cat] < 1)) {
@@ -88,12 +107,15 @@ export function RateShopScreen() {
     }
     setBusy(true);
     try {
+      // Einmal verifiziert bleibt verifiziert – auch wenn später von zu Hause angepasst wird.
+      const verified = alreadyVerified || (await checkOnSite());
       // Erst die Bewertung – sie ist die Voraussetzung, um über Besonderheiten abzustimmen.
-      await upsertRating(shopId, user.id, values);
+      await upsertRating(shopId, user.id, values, verified);
       await saveFeatureVotes(shopId, user.id, votes);
       Alert.alert(
         'Danke!',
-        existing ? 'Deine Bewertung wurde aktualisiert.' : 'Deine Bewertung wurde gespeichert.',
+        (existing ? 'Deine Bewertung wurde aktualisiert.' : 'Deine Bewertung wurde gespeichert.') +
+          (verified ? '\n\n📍 Vor Ort verifiziert – deine Bewertung trägt das ✓-Siegel!' : ''),
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (e) {
@@ -109,10 +131,23 @@ export function RateShopScreen() {
       contentContainerStyle={styles.content}
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>
-      <Text style={{ color: theme.colors.textSecondary, marginBottom: 20 }}>
+      <Text style={{ color: theme.colors.textSecondary, marginBottom: 8 }}>
         {existing
           ? 'Du hast diesen Laden schon bewertet – du kannst deine Angaben anpassen.'
           : 'Vergib 1 bis 5 Sterne pro Kategorie.'}
+      </Text>
+      <Text
+        style={[
+          styles.verifiedHint,
+          {
+            backgroundColor: theme.colors.surfaceVariant,
+            color: alreadyVerified ? theme.colors.success : theme.colors.textSecondary,
+          },
+        ]}
+      >
+        {alreadyVerified
+          ? '✓ Diese Bewertung ist vor Ort verifiziert.'
+          : '📍 Tipp: Bewerte direkt beim Laden (mit Standortfreigabe) – dann bekommt deine Bewertung das „✓ vor Ort verifiziert"-Siegel. Gespeichert wird nur ja/nein, nie dein Standort.'}
       </Text>
 
       {RATING_CATEGORIES.map((cat) => (
@@ -198,4 +233,11 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6, marginTop: 20 },
   spacer: { height: 20 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  verifiedHint: {
+    borderRadius: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 16,
+    padding: 10,
+  },
 });

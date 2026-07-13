@@ -39,6 +39,9 @@ create table public.ratings (
   sauberkeit     smallint not null check (sauberkeit between 1 and 5),
   preis_leistung smallint not null check (preis_leistung between 1 and 5),
   wartezeit      smallint not null check (wartezeit between 1 and 5),
+  -- Vor-Ort-Verifizierung: true, wenn der Nutzer beim Bewerten nachweislich
+  -- in Ladennähe war (App prüft Distanz; gespeichert wird nur ja/nein).
+  verified       boolean not null default false,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
   unique (shop_id, user_id)
@@ -100,12 +103,18 @@ with (security_invoker = true) as
 select
   s.*,
   coalesce(rs.rating_count, 0)     as rating_count,
+  coalesce(rs.verifiziert_count, 0) as verifiziert_count,
   rs.avg_geschmack,
   rs.avg_freundlichkeit,
   rs.avg_sauberkeit,
   rs.avg_preis_leistung,
   rs.avg_wartezeit,
   rs.avg_gesamt,
+  -- Preis-Leistungs-Score: Sterne pro Euro (nur mit Preis und Bewertung)
+  case
+    when s.doener_preis is not null and s.doener_preis > 0 and rs.avg_gesamt is not null
+    then round((rs.avg_gesamt / s.doener_preis)::numeric, 3)::float8
+  end as value_score,
   coalesce(fs.features_confirmed, '{}'::text[]) as features_confirmed
 from public.shops s
 left join public.shop_rating_summary rs on rs.shop_id = s.id
@@ -215,6 +224,7 @@ with (security_invoker = true) as
 select
   shop_id,
   count(*)::int                                as rating_count,
+  (count(*) filter (where verified))::int      as verifiziert_count,
   round(avg(geschmack)::numeric, 2)::float8      as avg_geschmack,
   round(avg(freundlichkeit)::numeric, 2)::float8 as avg_freundlichkeit,
   round(avg(sauberkeit)::numeric, 2)::float8     as avg_sauberkeit,

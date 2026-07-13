@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Tabs: undefined;
   ShopDetail: { shopId: string };
-  RateShop: { shopId: string; shopName: string };
+  RateShop: { shopId: string; shopName: string; latitude: number; longitude: number };
   ReportShop: { shopId: string; shopName: string };
   AddShop: undefined;
   EditShop: { shopId: string };

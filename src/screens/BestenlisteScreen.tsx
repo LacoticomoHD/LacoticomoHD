@@ -13,7 +13,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { StarRating } from '@/components/StarRating';
-import { fetchCityStats, fetchTopShops } from '@/lib/api';
+import { fetchCityStats, fetchTopShops, TopShopsMode } from '@/lib/api';
 import { formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
@@ -26,6 +26,7 @@ export function BestenlisteScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [cities, setCities] = useState<CityStats[]>([]);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [mode, setMode] = useState<TopShopsMode>('rating');
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
 
   useFocusEffect(
@@ -33,10 +34,10 @@ export function BestenlisteScreen() {
       fetchCityStats()
         .then(setCities)
         .catch(() => {});
-      fetchTopShops(selectedCity)
+      fetchTopShops(selectedCity, mode)
         .then(setShops)
         .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
-    }, [selectedCity])
+    }, [selectedCity, mode])
   );
 
   // Dönerpreis-Index: gewählte Stadt oder Deutschland gesamt (gewichteter Schnitt).
@@ -58,6 +59,10 @@ export function BestenlisteScreen() {
   const share = async () => {
     if (shops.length === 0) return;
     const scope = selectedCity ?? 'Deutschland';
+    const title =
+      mode === 'value'
+        ? `🏅 Die besten Döner fürs Geld in ${scope}`
+        : `🥙 Die besten Dönerläden in ${scope}`;
     const lines = shops
       .slice(0, 10)
       .map(
@@ -67,7 +72,7 @@ export function BestenlisteScreen() {
           }`
       );
     await Share.share({
-      message: `🥙 Die besten Dönerläden in ${scope} – bewertet mit Don Döner:\n\n${lines.join('\n')}`,
+      message: `${title} – bewertet mit Don Döner:\n\n${lines.join('\n')}`,
     });
   };
 
@@ -113,6 +118,35 @@ export function BestenlisteScreen() {
         </ScrollView>
       </View>
 
+      {/* Ranking-Modus: beste Bewertung vs. Preis-Leistung */}
+      <View style={styles.modeRow}>
+        <Pressable
+          onPress={() => setMode('rating')}
+          style={cityChip(mode === 'rating')}
+        >
+          <Text
+            style={{
+              color: mode === 'rating' ? theme.colors.onPrimary : theme.colors.text,
+              fontWeight: '600',
+              fontSize: 13,
+            }}
+          >
+            ⭐ Top bewertet
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => setMode('value')} style={cityChip(mode === 'value')}>
+          <Text
+            style={{
+              color: mode === 'value' ? theme.colors.onPrimary : theme.colors.text,
+              fontWeight: '600',
+              fontSize: 13,
+            }}
+          >
+            🏅 Bester Döner fürs Geld
+          </Text>
+        </Pressable>
+      </View>
+
       {preisIndex ? (
         <View
           style={[
@@ -139,7 +173,9 @@ export function BestenlisteScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            Hier gibt es noch keine bewerteten Läden – sei die/der Erste!
+            {mode === 'value'
+              ? 'Für dieses Ranking braucht es Läden mit Bewertung UND Dönerpreis – trag bei deinen Bewertungen den Preis mit ein!'
+              : 'Hier gibt es noch keine bewerteten Läden – sei die/der Erste!'}
           </Text>
         }
         renderItem={({ item, index }) => (
@@ -163,12 +199,22 @@ export function BestenlisteScreen() {
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
                   {item.summary?.avg_gesamt?.toFixed(1)} ({item.summary?.rating_count})
                 </Text>
+                {item.summary && item.summary.verifiziert_count > 0 ? (
+                  <Text style={{ color: theme.colors.success, fontSize: 12 }}>
+                    📍{item.summary.verifiziert_count}
+                  </Text>
+                ) : null}
                 {item.doener_preis != null ? (
                   <Text style={{ color: theme.colors.accent, fontSize: 12, fontWeight: '700' }}>
                     🥙 {formatPrice(item.doener_preis)}
                   </Text>
                 ) : null}
               </View>
+              {mode === 'value' && item.value_score != null && item.doener_preis != null ? (
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                  {item.summary?.avg_gesamt?.toFixed(1)} ★ für {formatPrice(item.doener_preis)}
+                </Text>
+              ) : null}
             </View>
           </Pressable>
         )}
@@ -216,6 +262,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   list: { paddingBottom: 90, paddingHorizontal: 16 },
+  modeRow: { flexDirection: 'row', gap: 8, marginBottom: 10, paddingHorizontal: 16 },
   rank: { fontSize: 24, width: 36, textAlign: 'center' },
   shareFab: {
     alignItems: 'center',
