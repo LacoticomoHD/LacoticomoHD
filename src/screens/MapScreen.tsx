@@ -1,13 +1,15 @@
 import {
   Camera,
+  CircleLayer,
   MapView,
-  PointAnnotation,
+  ShapeSource,
   UserLocation,
   type CameraRef,
   type MapViewRef,
+  type OnPressEvent,
 } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -96,6 +98,30 @@ export function MapScreen() {
     );
   }, []);
 
+  // Läden als GeoJSON für die GL-Kreis-Ebene. Wichtig: Die Marker sind KEINE
+  // einzelnen Views – dadurch bleibt die Kartenstruktur stabil und die Kamera
+  // springt beim Nachladen nicht auf die Startposition zurück (Android-Bug).
+  const shopFeatures = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: 'FeatureCollection',
+      features: shops.filter(matchesFilters).map((shop) => ({
+        type: 'Feature' as const,
+        id: shop.id,
+        geometry: { type: 'Point' as const, coordinates: [shop.longitude, shop.latitude] },
+        properties: {
+          id: shop.id,
+          open: isOpenNow(shop.opening_hours ?? {}),
+        },
+      })),
+    }),
+    [shops, matchesFilters]
+  );
+
+  const onShopPress = (event: OnPressEvent) => {
+    const shopId = event.features?.[0]?.properties?.id as string | undefined;
+    if (shopId) navigation.navigate('ShopDetail', { shopId });
+  };
+
   const goToMyLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
@@ -124,29 +150,23 @@ export function MapScreen() {
       >
         <Camera defaultSettings={{ centerCoordinate: INITIAL_CENTER, zoomLevel: 11 }} ref={cameraRef} />
         {hasLocationPermission ? <UserLocation /> : null}
-        {shops.filter(matchesFilters).map((shop) => {
-          const open = isOpenNow(shop.opening_hours ?? {});
-          return (
-            <PointAnnotation
-              key={shop.id}
-              id={shop.id}
-              coordinate={[shop.longitude, shop.latitude]}
-              onSelected={() => navigation.navigate('ShopDetail', { shopId: shop.id })}
-            >
-              <View
-                style={[
-                  styles.pin,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: open ? theme.colors.success : theme.colors.danger,
-                  },
-                ]}
-              >
-                <Text style={styles.pinEmoji}>🥙</Text>
-              </View>
-            </PointAnnotation>
-          );
-        })}
+        <ShapeSource id="shops" shape={shopFeatures} onPress={onShopPress} hitbox={{ width: 24, height: 24 }}>
+          <CircleLayer
+            id="shop-circles"
+            style={{
+              circleRadius: 9,
+              circleColor: theme.colors.primary,
+              circleStrokeWidth: 3,
+              circleStrokeColor: [
+                'case',
+                ['get', 'open'],
+                theme.colors.success,
+                theme.colors.danger,
+              ],
+              circleOpacity: 0.95,
+            }}
+          />
+        </ShapeSource>
       </MapView>
 
       {/* Filter-Chips über der Karte */}
@@ -205,14 +225,4 @@ const styles = StyleSheet.create({
   filterOverlay: { left: 0, position: 'absolute', right: 0, top: 4 },
   flex: { flex: 1 },
   locateFab: { bottom: 92, right: 16 },
-  pin: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 3,
-    elevation: 3,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  pinEmoji: { fontSize: 20 },
 });
