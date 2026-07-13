@@ -28,6 +28,11 @@ Google-Maps-Rezensionen so nicht gibt.
 - ✏️ **Eigene Läden bearbeiten** (Öffnungszeiten, Preis, Besonderheiten …)
 - 🛡️ **Duplikat-Warnung** beim Anlegen, wenn in der Nähe schon ein ähnlicher Laden existiert
 - ⭐ **„Meine Bewertungen"** im Profil mit Direktzugriff zum Ändern
+- ❤️ **Favoriten („Meine Stammläden")** per Herz in der Detailansicht
+- 🏆 **Bestenliste** – Top 10 pro Stadt oder deutschlandweit, mit Teilen-Funktion
+- 📊 **Dönerpreis-Index** – Durchschnittspreis je Stadt aus den gemeldeten Preisen
+- 🇩🇪 **Deutschlandweite Läden**: Karte und Liste laden effizient nur den sichtbaren
+  Ausschnitt bzw. die Umgebung; die Suche findet Läden im ganzen Land
 - 🚩 **Melden-Funktion** für fehlerhafte Einträge (falsche Adresse, geschlossen, Duplikat …)
 - 🗑️ **Konto-Selbstlöschung** direkt in der App (Pflicht für den Apple App Store)
 - 📄 **Impressum & Datenschutzerklärung** in der App (Platzhalter vor Release ausfüllen!)

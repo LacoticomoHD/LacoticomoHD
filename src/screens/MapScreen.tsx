@@ -4,6 +4,7 @@ import {
   PointAnnotation,
   UserLocation,
   type CameraRef,
+  type MapViewRef,
 } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,15 +13,15 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
-import { fetchShopsWithSummary } from '@/lib/api';
+import { fetchShopsInBounds } from '@/lib/api';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
-import { ShopWithSummary } from '@/types';
+import { GeoBounds, ShopWithSummary } from '@/types';
 
-// Start: Berlin Mitte – bis der Nutzer seinen Standort freigibt. [Längengrad, Breitengrad]
-const INITIAL_CENTER: [number, number] = [13.405, 52.52];
+// Start: Karlsruhe – hier begann die Community. [Längengrad, Breitengrad]
+const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
 
 // Kartenstil: Bevorzugt eine komplette Style-URL (z. B. MapTiler-Vektorkarte) aus
 // EXPO_PUBLIC_MAP_STYLE_URL; alternativ Raster-Tiles über EXPO_PUBLIC_TILE_URL.
@@ -53,18 +54,41 @@ export function MapScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const cameraRef = useRef<CameraRef>(null);
+  const mapRef = useRef<MapViewRef>(null);
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const { matchesFilters } = useFilters();
 
-  const loadShops = useCallback(() => {
-    fetchShopsWithSummary()
-      .then(setShops)
-      .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
+  // Es wird immer nur der sichtbare Kartenausschnitt geladen (deutschlandweit
+  // wären es zu viele Läden auf einmal).
+  const loadVisibleShops = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      const [northEast, southWest] = await map.getVisibleBounds();
+      const bounds: GeoBounds = {
+        minLat: southWest[1],
+        maxLat: northEast[1],
+        minLon: southWest[0],
+        maxLon: northEast[0],
+      };
+      // Bei sehr weitem Zoom (halb Deutschland sichtbar) nicht laden – erst reinzoomen.
+      if (bounds.maxLat - bounds.minLat > 3.5) {
+        setShops([]);
+        return;
+      }
+      setShops(await fetchShopsInBounds(bounds));
+    } catch (e) {
+      Alert.alert('Fehler beim Laden', e instanceof Error ? e.message : 'Unbekannt');
+    }
   }, []);
 
   // Bei jedem Fokus neu laden, damit neue Läden/Bewertungen sofort sichtbar sind.
-  useFocusEffect(loadShops);
+  useFocusEffect(
+    useCallback(() => {
+      loadVisibleShops();
+    }, [loadVisibleShops])
+  );
 
   useEffect(() => {
     Location.getForegroundPermissionsAsync().then(({ status }) =>
@@ -89,7 +113,15 @@ export function MapScreen() {
 
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} mapStyle={MAP_STYLE} attributionEnabled logoEnabled={false}>
+      <MapView
+        ref={mapRef}
+        style={styles.flex}
+        mapStyle={MAP_STYLE}
+        attributionEnabled
+        logoEnabled={false}
+        onRegionDidChange={loadVisibleShops}
+        onDidFinishLoadingMap={loadVisibleShops}
+      >
         <Camera defaultSettings={{ centerCoordinate: INITIAL_CENTER, zoomLevel: 11 }} ref={cameraRef} />
         {hasLocationPermission ? <UserLocation /> : null}
         {shops.filter(matchesFilters).map((shop) => {

@@ -10,6 +10,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen } from '@/screens/AuthScreen';
+import { BestenlisteScreen } from '@/screens/BestenlisteScreen';
+import { FavoritesScreen } from '@/screens/FavoritesScreen';
 import { LegalScreen } from '@/screens/LegalScreen';
 import { MapScreen } from '@/screens/MapScreen';
 import { MyRatingsScreen } from '@/screens/MyRatingsScreen';
@@ -29,6 +31,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const TAB_ICONS: Record<keyof TabParamList, string> = {
   Karte: '🗺️',
   Liste: '📋',
+  Top10: '🏆',
   Profil: '👤',
 };
 
@@ -49,6 +52,11 @@ function Tabs() {
     >
       <Tab.Screen name="Karte" component={MapScreen} options={{ title: 'Don Döner' }} />
       <Tab.Screen name="Liste" component={ShopListScreen} options={{ title: 'Alle Läden' }} />
+      <Tab.Screen
+        name="Top10"
+        component={BestenlisteScreen}
+        options={{ title: 'Bestenliste', tabBarLabel: 'Top 10' }}
+      />
       <Tab.Screen name="Profil" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -131,6 +139,11 @@ export function RootNavigator() {
             name="MyRatings"
             component={MyRatingsScreen}
             options={{ title: 'Meine Bewertungen' }}
+          />
+          <Stack.Screen
+            name="Favorites"
+            component={FavoritesScreen}
+            options={{ title: 'Meine Stammläden' }}
           />
           <Stack.Screen
             name="Legal"

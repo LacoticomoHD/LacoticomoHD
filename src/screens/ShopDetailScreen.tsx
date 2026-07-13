@@ -15,7 +15,14 @@ import { Button } from '@/components/Button';
 import { FeatureBadges } from '@/components/FeatureBadges';
 import { OpeningHoursTable } from '@/components/OpeningHoursTable';
 import { StarRating } from '@/components/StarRating';
-import { fetchFeatureSummary, fetchShop, fetchShopSummary } from '@/lib/api';
+import {
+  addFavorite,
+  fetchFavoriteIds,
+  fetchFeatureSummary,
+  fetchShop,
+  fetchShopSummary,
+  removeFavorite,
+} from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
 import { formatPrice } from '@/lib/geo';
@@ -41,6 +48,8 @@ export function ShopDetailScreen() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [summary, setSummary] = useState<ShopRatingSummary | null>(null);
   const [featureSummary, setFeatureSummary] = useState<ShopFeatureSummary[]>([]);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,8 +60,29 @@ export function ShopDetailScreen() {
           setFeatureSummary(feats);
         })
         .catch((e: Error) => Alert.alert('Fehler', e.message));
-    }, [shopId])
+      if (user) {
+        fetchFavoriteIds(user.id)
+          .then((ids) => setIsFavorite(ids.has(shopId)))
+          .catch(() => {});
+      }
+    }, [shopId, user])
   );
+
+  const toggleFavorite = async () => {
+    if (!user || favoriteBusy) return;
+    setFavoriteBusy(true);
+    const next = !isFavorite;
+    setIsFavorite(next);
+    try {
+      if (next) await addFavorite(user.id, shopId);
+      else await removeFavorite(user.id, shopId);
+    } catch (e) {
+      setIsFavorite(!next);
+      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
 
   if (!shop) {
     return (
@@ -69,7 +99,14 @@ export function ShopDetailScreen() {
       style={{ backgroundColor: theme.colors.background }}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.name, { color: theme.colors.text }]}>{shop.name}</Text>
+      <View style={styles.nameRow}>
+        <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={2}>
+          {shop.name}
+        </Text>
+        <Pressable onPress={toggleFavorite} hitSlop={8} style={styles.favoriteButton}>
+          <Text style={{ fontSize: 28 }}>{isFavorite ? '❤️' : '🤍'}</Text>
+        </Pressable>
+      </View>
       <Text style={{ color: theme.colors.textSecondary, marginTop: 4 }}>📍 {shop.address}</Text>
       <View style={styles.statusRow}>
         <Text
@@ -203,7 +240,9 @@ const styles = StyleSheet.create({
   categoryRow: { alignItems: 'center', flexDirection: 'row', paddingVertical: 4 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   content: { padding: 20, paddingBottom: 40, gap: 0 },
-  name: { fontSize: 26, fontWeight: '800' },
+  favoriteButton: { padding: 2 },
+  name: { flex: 1, fontSize: 26, fontWeight: '800' },
+  nameRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
   reportLink: { alignSelf: 'center', marginTop: 16, padding: 4 },
   statusRow: {
     alignItems: 'center',

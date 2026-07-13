@@ -1,5 +1,7 @@
 import {
+  CityStats,
   FeatureVote,
+  GeoBounds,
   OpeningHours,
   Rating,
   RatingWithShop,
@@ -13,31 +15,145 @@ import {
 
 import { supabase } from './supabase';
 
-export async function fetchShopsWithSummary(): Promise<ShopWithSummary[]> {
-  const [shopsRes, summariesRes, featuresRes] = await Promise.all([
-    supabase.from('shops').select('*'),
-    supabase.from('shop_rating_summary').select('*'),
-    supabase.from('shop_feature_summary').select('*').gt('score', 0),
-  ]);
-  if (shopsRes.error) throw new Error(shopsRes.error.message);
-  if (summariesRes.error) throw new Error(summariesRes.error.message);
-  if (featuresRes.error) throw new Error(featuresRes.error.message);
+/** Zeile der View shops_overview: Laden + Bewertungsschnitt + bestätigte Besonderheiten. */
+interface OverviewRow extends Shop {
+  rating_count: number;
+  avg_geschmack: number | null;
+  avg_freundlichkeit: number | null;
+  avg_sauberkeit: number | null;
+  avg_preis_leistung: number | null;
+  avg_wartezeit: number | null;
+  avg_gesamt: number | null;
+  features_confirmed: ShopFeature[];
+}
 
-  const summaries = new Map<string, ShopRatingSummary>(
-    (summariesRes.data as ShopRatingSummary[]).map((s) => [s.shop_id, s])
-  );
-  // Besonderheiten stammen aus der Community-Abstimmung (nur positiver Saldo zählt).
-  const confirmedFeatures = new Map<string, ShopFeature[]>();
-  for (const row of featuresRes.data as ShopFeatureSummary[]) {
-    const list = confirmedFeatures.get(row.shop_id) ?? [];
-    list.push(row.feature);
-    confirmedFeatures.set(row.shop_id, list);
-  }
-  return (shopsRes.data as Shop[]).map((shop) => ({
+function mapOverviewRow(row: OverviewRow): ShopWithSummary {
+  const {
+    rating_count,
+    avg_geschmack,
+    avg_freundlichkeit,
+    avg_sauberkeit,
+    avg_preis_leistung,
+    avg_wartezeit,
+    avg_gesamt,
+    features_confirmed,
+    ...shop
+  } = row;
+  return {
     ...shop,
-    features: confirmedFeatures.get(shop.id) ?? [],
-    summary: summaries.get(shop.id) ?? null,
-  }));
+    features: features_confirmed ?? [],
+    summary:
+      rating_count > 0
+        ? {
+            shop_id: shop.id,
+            rating_count,
+            avg_geschmack,
+            avg_freundlichkeit,
+            avg_sauberkeit,
+            avg_preis_leistung,
+            avg_wartezeit,
+            avg_gesamt,
+          }
+        : null,
+  };
+}
+
+/** Läden im sichtbaren Kartenausschnitt – die App lädt nie ganz Deutschland auf einmal. */
+export async function fetchShopsInBounds(
+  bounds: GeoBounds,
+  limit = 400
+): Promise<ShopWithSummary[]> {
+  const { data, error } = await supabase
+    .from('shops_overview')
+    .select('*')
+    .gte('latitude', bounds.minLat)
+    .lte('latitude', bounds.maxLat)
+    .gte('longitude', bounds.minLon)
+    .lte('longitude', bounds.maxLon)
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data as OverviewRow[]).map(mapOverviewRow);
+}
+
+/** Serverseitige Suche nach Name oder Adresse (deutschlandweit). */
+export async function searchShops(query: string, limit = 50): Promise<ShopWithSummary[]> {
+  const escaped = query.replace(/[%_]/g, '');
+  const { data, error } = await supabase
+    .from('shops_overview')
+    .select('*')
+    .or(`name.ilike.%${escaped}%,address.ilike.%${escaped}%`)
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data as OverviewRow[]).map(mapOverviewRow);
+}
+
+/** Bestenliste: Top-Läden nach Gesamtschnitt, optional auf eine Stadt begrenzt. */
+export async function fetchTopShops(
+  city: string | null,
+  limit = 10
+): Promise<ShopWithSummary[]> {
+  let query = supabase
+    .from('shops_overview')
+    .select('*')
+    .gt('rating_count', 0)
+    .order('avg_gesamt', { ascending: false })
+    .order('rating_count', { ascending: false })
+    .limit(limit);
+  if (city) query = query.eq('city', city);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data as OverviewRow[]).map(mapOverviewRow);
+}
+
+/** Stadt-Statistik (Ladenanzahl + Dönerpreis-Index), größte Städte zuerst. */
+export async function fetchCityStats(limit = 12): Promise<CityStats[]> {
+  const { data, error } = await supabase
+    .from('city_stats')
+    .select('*')
+    .order('laeden', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data as CityStats[];
+}
+
+// ---------------------------------------------------------------------------
+// Favoriten („Meine Stammläden")
+// ---------------------------------------------------------------------------
+
+export async function fetchFavoriteIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('shop_id')
+    .eq('user_id', userId);
+  if (error) throw new Error(error.message);
+  return new Set((data as { shop_id: string }[]).map((r) => r.shop_id));
+}
+
+export async function addFavorite(userId: string, shopId: string) {
+  const { error } = await supabase
+    .from('favorites')
+    .upsert({ user_id: userId, shop_id: shopId });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeFavorite(userId: string, shopId: string) {
+  const { error } = await supabase
+    .from('favorites')
+    .delete()
+    .eq('user_id', userId)
+    .eq('shop_id', shopId);
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchFavoriteShops(userId: string): Promise<ShopWithSummary[]> {
+  const ids = await fetchFavoriteIds(userId);
+  if (ids.size === 0) return [];
+  const { data, error } = await supabase
+    .from('shops_overview')
+    .select('*')
+    .in('id', [...ids]);
+  if (error) throw new Error(error.message);
+  return (data as OverviewRow[]).map(mapOverviewRow);
 }
 
 /** Abstimmungsstand der Besonderheiten eines Ladens. */
@@ -105,12 +221,6 @@ export async function saveFeatureVotes(
   }
 }
 
-export async function fetchShops(): Promise<Shop[]> {
-  const { data, error } = await supabase.from('shops').select('*');
-  if (error) throw new Error(error.message);
-  return data as Shop[];
-}
-
 export async function fetchShop(shopId: string): Promise<Shop> {
   const { data, error } = await supabase.from('shops').select('*').eq('id', shopId).single();
   if (error) throw new Error(error.message);
@@ -165,6 +275,7 @@ export interface NewShopInput {
   opening_hours: OpeningHours;
   features: ShopFeature[];
   doener_preis: number | null;
+  city: string | null;
 }
 
 export async function createShop(input: NewShopInput, userId: string): Promise<Shop> {
@@ -221,19 +332,28 @@ export interface GeocodingResult {
   displayName: string;
   latitude: number;
   longitude: number;
+  city: string | null;
+}
+
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: { city?: string; town?: string; village?: string; municipality?: string };
 }
 
 /** Adresssuche über Nominatim (OpenStreetMap). Bitte Usage Policy beachten: max. 1 Anfrage/Sekunde. */
 export async function geocodeAddress(query: string): Promise<GeocodingResult[]> {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(query)}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&q=${encodeURIComponent(query)}`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'DonDoener/1.0 (Doener-Bewertungs-App)' },
   });
   if (!res.ok) throw new Error(`Adresssuche fehlgeschlagen (${res.status})`);
-  const results = (await res.json()) as { display_name: string; lat: string; lon: string }[];
+  const results = (await res.json()) as NominatimResult[];
   return results.map((r) => ({
     displayName: r.display_name,
     latitude: parseFloat(r.lat),
     longitude: parseFloat(r.lon),
+    city: r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.municipality ?? null,
   }));
 }

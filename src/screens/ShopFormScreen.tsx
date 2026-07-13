@@ -16,7 +16,7 @@ import { TextField } from '@/components/TextField';
 import {
   createShop,
   fetchShop,
-  fetchShops,
+  fetchShopsInBounds,
   geocodeAddress,
   GeocodingResult,
   updateShop,
@@ -82,6 +82,7 @@ export function ShopFormScreen() {
           displayName: shop.address,
           latitude: shop.latitude,
           longitude: shop.longitude,
+          city: shop.city,
         });
         setFeatures(shop.features ?? []);
         const nextDays = emptyDays();
@@ -186,12 +187,18 @@ export function ShopFormScreen() {
       opening_hours,
       features,
       doener_preis: price.value,
+      city: selected.city,
     };
 
     // Duplikat-Schutz: gibt es im Umkreis von 150 m schon einen ähnlich benannten Laden?
     if (!editShopId) {
       try {
-        const existing = await fetchShops();
+        const existing = await fetchShopsInBounds({
+          minLat: input.latitude - 0.01,
+          maxLat: input.latitude + 0.01,
+          minLon: input.longitude - 0.015,
+          maxLon: input.longitude + 0.015,
+        });
         const normalized = normalizeName(input.name);
         const duplicate = existing.find((s) => {
           const near =

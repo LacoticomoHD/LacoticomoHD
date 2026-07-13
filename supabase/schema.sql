@@ -17,6 +17,8 @@ create table public.shops (
   features      text[] not null default '{}',
   -- Preis des Standard-Döners in Euro (optional)
   doener_preis  numeric(5, 2) check (doener_preis is null or (doener_preis > 0 and doener_preis < 50)),
+  -- Stadt (für Bestenliste und Dönerpreis-Index)
+  city          text,
   -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
   created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),
@@ -44,6 +46,19 @@ create table public.ratings (
 
 create index ratings_shop_id_idx on public.ratings (shop_id);
 create index shops_created_by_idx on public.shops (created_by);
+-- Für das regionale Laden des sichtbaren Kartenausschnitts
+create index shops_lat_lon_idx on public.shops (latitude, longitude);
+create index shops_city_idx on public.shops (city);
+
+-- ---------------------------------------------------------------------------
+-- Favoriten („Meine Stammläden")
+-- ---------------------------------------------------------------------------
+create table public.favorites (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  shop_id    uuid not null references public.shops (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, shop_id)
+);
 
 -- ---------------------------------------------------------------------------
 -- Besonderheiten: Community-Abstimmung (1 = vorhanden, -1 = nicht vorhanden).
@@ -75,6 +90,43 @@ select
   coalesce(sum(vote), 0)::int              as score
 from public.shop_feature_votes
 group by shop_id, feature;
+
+-- ---------------------------------------------------------------------------
+-- Kombinierte Übersicht: Laden + Bewertungsschnitt + bestätigte Besonderheiten.
+-- Die App lädt hierüber effizient nur den sichtbaren Kartenausschnitt.
+-- ---------------------------------------------------------------------------
+create view public.shops_overview
+with (security_invoker = true) as
+select
+  s.*,
+  coalesce(rs.rating_count, 0)     as rating_count,
+  rs.avg_geschmack,
+  rs.avg_freundlichkeit,
+  rs.avg_sauberkeit,
+  rs.avg_preis_leistung,
+  rs.avg_wartezeit,
+  rs.avg_gesamt,
+  coalesce(fs.features_confirmed, '{}'::text[]) as features_confirmed
+from public.shops s
+left join public.shop_rating_summary rs on rs.shop_id = s.id
+left join (
+  select shop_id, array_agg(feature) as features_confirmed
+  from public.shop_feature_summary
+  where score > 0
+  group by shop_id
+) fs on fs.shop_id = s.id;
+
+-- Stadt-Statistik für Bestenliste und Dönerpreis-Index
+create view public.city_stats
+with (security_invoker = true) as
+select
+  city,
+  count(*)::int as laeden,
+  round(avg(doener_preis)::numeric, 2)::float8 as preis_schnitt,
+  count(doener_preis)::int as preis_anzahl
+from public.shops
+where city is not null
+group by city;
 
 -- ---------------------------------------------------------------------------
 -- Meldungen fehlerhafter Ladeneinträge
@@ -119,6 +171,17 @@ alter table public.shops enable row level security;
 alter table public.ratings enable row level security;
 alter table public.reports enable row level security;
 alter table public.shop_feature_votes enable row level security;
+alter table public.favorites enable row level security;
+
+-- Favoriten: jeder verwaltet nur seine eigenen.
+create policy "favorites_select_own" on public.favorites
+  for select to authenticated using (user_id = auth.uid());
+
+create policy "favorites_insert_own" on public.favorites
+  for insert to authenticated with check (user_id = auth.uid());
+
+create policy "favorites_delete_own" on public.favorites
+  for delete to authenticated using (user_id = auth.uid());
 
 -- Läden: jeder Angemeldete darf lesen und anlegen; ändern/löschen nur, wer sie angelegt hat.
 create policy "shops_select" on public.shops

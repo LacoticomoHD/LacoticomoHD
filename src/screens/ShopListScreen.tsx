@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,13 +7,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FilterBar } from '@/components/FilterBar';
 import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
-import { fetchShopsWithSummary } from '@/lib/api';
+import { fetchShopsInBounds, searchShops } from '@/lib/api';
 import { useFilters } from '@/lib/FilterContext';
 import { distanceKm, formatDistance, formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { SHOP_FEATURE_ICONS, ShopWithSummary } from '@/types';
+
+// Ohne Standort/Suche zeigt die Liste die Region Karlsruhe (Start-Community).
+const DEFAULT_CENTER = { latitude: 49.0093, longitude: 8.4044 };
+// ±0,25° Breite ≈ Umkreis von rund 25 km
+const NEARBY_DELTA = 0.25;
 
 type SortMode = 'rating' | 'distance';
 
@@ -31,26 +36,56 @@ export function ShopListScreen() {
   const [sortMode, setSortMode] = useState<SortMode>('rating');
   const [position, setPosition] = useState<Coords | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchShopsWithSummary()
+  // Läden laden: bei Suchbegriff deutschlandweit suchen, sonst Umgebung
+  // (eigener Standort oder Karlsruhe als Standard) – nie ganz Deutschland.
+  const loadShops = useCallback(
+    (center: Coords | null, searchQuery: string) => {
+      const q = searchQuery.trim();
+      const promise =
+        q.length >= 2
+          ? searchShops(q)
+          : fetchShopsInBounds({
+              minLat: (center ?? DEFAULT_CENTER).latitude - NEARBY_DELTA,
+              maxLat: (center ?? DEFAULT_CENTER).latitude + NEARBY_DELTA,
+              minLon: (center ?? DEFAULT_CENTER).longitude - NEARBY_DELTA * 1.5,
+              maxLon: (center ?? DEFAULT_CENTER).longitude + NEARBY_DELTA * 1.5,
+            });
+      promise
         .then(setShops)
         .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
+    },
+    []
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadShops(position, query);
       // Standort nur nutzen, wenn die Freigabe schon erteilt wurde (kein Popup hier).
       Location.getForegroundPermissionsAsync().then(({ status }) => {
         if (status === 'granted') {
           Location.getCurrentPositionAsync({}).then(
-            (pos) =>
-              setPosition({
+            (pos) => {
+              const coords = {
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,
-              }),
+              };
+              setPosition(coords);
+              if (!query.trim()) loadShops(coords, query);
+            },
             () => {}
           );
         }
       });
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadShops])
   );
+
+  // Bei Eingabe im Suchfeld serverseitig (deutschlandweit) suchen.
+  useEffect(() => {
+    const timer = setTimeout(() => loadShops(position, query), 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const selectDistanceSort = async () => {
     if (!position) {
@@ -69,12 +104,8 @@ export function ShopListScreen() {
   };
 
   const sorted = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = shops
-      .filter(matchesFilters)
-      .filter(
-        (s) => !q || s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q)
-      );
+    // Die Textsuche läuft bereits serverseitig – hier nur noch Filter + Sortierung.
+    const filtered = shops.filter(matchesFilters);
     if (sortMode === 'distance' && position) {
       return filtered.sort(
         (a, b) =>
@@ -85,7 +116,7 @@ export function ShopListScreen() {
     return filtered.sort(
       (a, b) => (b.summary?.avg_gesamt ?? -1) - (a.summary?.avg_gesamt ?? -1)
     );
-  }, [shops, query, sortMode, position, matchesFilters]);
+  }, [shops, sortMode, position, matchesFilters]);
 
   const sortChip = (active: boolean) => [
     styles.sortChip,
@@ -101,7 +132,7 @@ export function ShopListScreen() {
         <TextField
           value={query}
           onChangeText={setQuery}
-          placeholder="Nach Name oder Adresse suchen…"
+          placeholder="Deutschlandweit nach Name oder Adresse suchen…"
         />
       </View>
       <FilterBar />
@@ -125,7 +156,9 @@ export function ShopListScreen() {
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
             {shops.length === 0
-              ? 'Noch keine Dönerläden eingetragen. Füge auf der Karte mit ＋ den ersten hinzu!'
+              ? query.trim().length >= 2
+                ? 'Nichts gefunden – anderer Suchbegriff oder Laden auf der Karte mit ＋ eintragen.'
+                : 'In dieser Gegend ist noch kein Dönerladen eingetragen. Füge auf der Karte mit ＋ den ersten hinzu!'
               : 'Kein Laden passt zu den aktuellen Filtern.'}
           </Text>
         }

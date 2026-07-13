@@ -6,11 +6,13 @@ export type RootStackParamList = {
   AddShop: undefined;
   EditShop: { shopId: string };
   MyRatings: undefined;
+  Favorites: undefined;
   Legal: undefined;
 };
 
 export type TabParamList = {
   Karte: undefined;
   Liste: undefined;
+  Top10: undefined;
   Profil: undefined;
 };

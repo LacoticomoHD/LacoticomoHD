@@ -115,8 +115,26 @@ export interface Shop {
   features: ShopFeature[];
   /** Preis des Standard-Döners in Euro, optional. */
   doener_preis: number | null;
+  /** Stadt (für Bestenliste und Dönerpreis-Index). */
+  city: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+/** Statistik einer Stadt (View city_stats): Ladenanzahl + Dönerpreis-Index. */
+export interface CityStats {
+  city: string;
+  laeden: number;
+  preis_schnitt: number | null;
+  preis_anzahl: number;
+}
+
+/** Geografischer Ausschnitt für regionales Laden (sichtbarer Kartenbereich). */
+export interface GeoBounds {
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
 }
 
 /** Gründe für die Meldung eines fehlerhaften Ladeneintrags. */
