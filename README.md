@@ -1,4 +1,4 @@
-# 🥙 Don Döner
+# Don Döner
 
 **Die App, die nur eines kann – Dönerläden bewerten. Aber das richtig.**
 
@@ -8,35 +8,35 @@ Google-Maps-Rezensionen so nicht gibt.
 
 ## Features
 
-- 🗺️ **Karte auf OpenStreetMap-Basis** (keine Google-Maps-Daten) mit allen eingetragenen Läden;
+- **Karte auf OpenStreetMap-Basis** (keine Google-Maps-Daten) mit allen eingetragenen Läden;
   Marker zeigen grün/rot, ob gerade geöffnet ist
-- ⭐ **Bewertung mit 1–5 Sternen** in fünf Kategorien:
+- **Bewertung mit 1–5 Sternen** in fünf Kategorien:
   Geschmack, Freundlichkeit, Sauberkeit, Preis-Leistung, Wartezeit
-- 🚫 **Bewusst ohne Freitext-Kommentare** – rein objektive Sternebewertung
-- 🐄🐔 **Besonderheiten pro Laden**: Kalb, Hähnchen, Vegetarisch, Vegan, Halal, Hausgemachtes Brot
-- 🕐 **Öffnungszeiten** pro Wochentag (inkl. „geöffnet über Mitternacht", z. B. 18:00–02:00)
+- **Bewusst ohne Freitext-Kommentare** – rein objektive Sternebewertung
+- **Besonderheiten pro Laden**: Kalb, Hähnchen, Vegetarisch, Vegan, Halal, Hausgemachtes Brot
+- **Öffnungszeiten** pro Wochentag (inkl. „geöffnet über Mitternacht", z. B. 18:00–02:00)
   und Adressanzeige
-- ➕ **Läden eintragen** direkt in der App, mit Adresssuche über Nominatim (OpenStreetMap)
-- 📋 **Listenansicht** mit Suche und Sortierung nach bester Bewertung
-- 🔐 **Login/Registrierung** per E-Mail & Passwort (Supabase Auth), inkl. Passwort-Zurücksetzen
-- 🌗 **Hell- und Dunkelmodus** – manuell wählbar oder automatisch nach Systemeinstellung
-- ✏️ **Eine Bewertung pro Nutzer und Laden**, jederzeit änderbar (kein Bewertungs-Spam)
-- 🔎 **Filter** nach Besonderheiten und „Jetzt geöffnet" – auf Karte und Liste
-- 🧭 **Navigation zum Laden** in der System-Karten-App: Auto, zu Fuß, Fahrrad oder ÖPNV
-- 💶 **Dönerpreis** pro Laden (optional) – inkl. Meldegrund „falscher Preis"
-- 📏 **Entfernungsanzeige** und Sortierung „Nächste zuerst" in der Liste
-- ✏️ **Eigene Läden bearbeiten** (Öffnungszeiten, Preis, Besonderheiten …)
-- 🛡️ **Duplikat-Warnung** beim Anlegen, wenn in der Nähe schon ein ähnlicher Laden existiert
-- ⭐ **„Meine Bewertungen"** im Profil mit Direktzugriff zum Ändern
-- ❤️ **Favoriten („Meine Stammläden")** per Herz in der Detailansicht
-- 🏆 **Bestenliste** – Top 10 pro Stadt oder deutschlandweit, mit Teilen-Funktion
-- 📊 **Dönerpreis-Index** – Durchschnittspreis je Stadt aus den gemeldeten Preisen
-- 🇩🇪 **Deutschlandweite Läden**: Karte und Liste laden effizient nur den sichtbaren
+- **Läden eintragen** direkt in der App, mit Adresssuche über Nominatim (OpenStreetMap)
+- **Listenansicht** mit Suche und Sortierung nach bester Bewertung
+- **Login/Registrierung** per E-Mail & Passwort (Supabase Auth), inkl. Passwort-Zurücksetzen
+- **Hell- und Dunkelmodus** – manuell wählbar oder automatisch nach Systemeinstellung
+- **Eine Bewertung pro Nutzer und Laden**, jederzeit änderbar (kein Bewertungs-Spam)
+- **Filter** nach Besonderheiten und „Jetzt geöffnet" – auf Karte und Liste
+- **Navigation zum Laden** in der System-Karten-App: Auto, zu Fuß, Fahrrad oder ÖPNV
+- **Dönerpreis** pro Laden (optional) – inkl. Meldegrund „falscher Preis"
+- **Entfernungsanzeige** und Sortierung „Nächste zuerst" in der Liste
+- **Eigene Läden bearbeiten** (Öffnungszeiten, Preis, Besonderheiten …)
+- **Duplikat-Warnung** beim Anlegen, wenn in der Nähe schon ein ähnlicher Laden existiert
+- **„Meine Bewertungen"** im Profil mit Direktzugriff zum Ändern
+- **Favoriten („Meine Stammläden")** per Herz in der Detailansicht
+- **Bestenliste** – Top 10 pro Stadt oder deutschlandweit, mit Teilen-Funktion
+- **Dönerpreis-Index** – Durchschnittspreis je Stadt aus den gemeldeten Preisen
+- **Deutschlandweite Läden**: Karte und Liste laden effizient nur den sichtbaren
   Ausschnitt bzw. die Umgebung; die Suche findet Läden im ganzen Land
-- 🚩 **Melden-Funktion** für fehlerhafte Einträge (falsche Adresse, geschlossen, Duplikat …)
-- 🗑️ **Konto-Selbstlöschung** direkt in der App (Pflicht für den Apple App Store)
-- 📄 **Impressum & Datenschutzerklärung** in der App (Platzhalter vor Release ausfüllen!)
-- 👑 **Eigenes App-Icon und Splashscreen** (gekrönter Dönerspieß, hell & dunkel)
+- **Melden-Funktion** für fehlerhafte Einträge (falsche Adresse, geschlossen, Duplikat …)
+- **Konto-Selbstlöschung** direkt in der App (Pflicht für den Apple App Store)
+- **Impressum & Datenschutzerklärung** in der App (Platzhalter vor Release ausfüllen!)
+- **Eigenes App-Icon und Splashscreen** (gekrönter Dönerspieß, hell & dunkel)
 
 ## Tech-Stack
 
