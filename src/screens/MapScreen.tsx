@@ -4,7 +4,6 @@ import {
   MapView,
   ShapeSource,
   UserLocation,
-  type CameraRef,
   type MapViewRef,
   type OnPressEvent,
 } from '@maplibre/maplibre-react-native';
@@ -27,9 +26,16 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 // Wird beim Start durch den eigenen Standort ersetzt, sobald die Freigabe da ist.
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
 
-// WICHTIG: stabile Objekt-Identität – die Kamera-Kinder der Karte dürfen sich
-// zwischen Renders nicht verändern, sonst springt die Kamera zurück (Android).
-const CAMERA_DEFAULTS = { centerCoordinate: INITIAL_CENTER, zoomLevel: 11 };
+/** Kamera-Sprünge laufen ausschließlich über defaultSettings + key-Remount:
+ *  Der imperative setCamera-Befehl bleibt auf der neuen RN-Architektur als
+ *  Eigenschaft "kleben" und wird bei jedem Daten-Refresh erneut ausgeführt –
+ *  das war die Ursache für das ständige Zurückspringen der Karte. Ein
+ *  Remount wendet die Position dagegen garantiert genau EINMAL an. */
+interface CameraJump {
+  centerCoordinate: [number, number];
+  zoomLevel: number;
+  key: number;
+}
 
 // Kartenstil: Bevorzugt eine komplette Style-URL (z. B. MapTiler-Vektorkarte) aus
 // EXPO_PUBLIC_MAP_STYLE_URL; alternativ Raster-Tiles über EXPO_PUBLIC_TILE_URL.
@@ -61,10 +67,14 @@ const ATTRIBUTION_TEXT = MAP_STYLE_URL?.includes('maptiler')
 export function MapScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapViewRef>(null);
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [camera, setCameraJump] = useState<CameraJump>({
+    centerCoordinate: INITIAL_CENTER,
+    zoomLevel: 11,
+    key: 0,
+  });
   const { matchesFilters } = useFilters();
 
   // Es wird immer nur der sichtbare Kartenausschnitt geladen (deutschlandweit
@@ -112,11 +122,11 @@ export function MapScreen() {
           () => null
         ));
       if (pos) {
-        cameraRef.current?.setCamera({
+        setCameraJump((prev) => ({
           centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
           zoomLevel: 13,
-          animationDuration: 0,
-        });
+          key: prev.key + 1,
+        }));
       }
     })();
   }, []);
@@ -153,11 +163,11 @@ export function MapScreen() {
     }
     setHasLocationPermission(true);
     const pos = await Location.getCurrentPositionAsync({});
-    cameraRef.current?.setCamera({
+    setCameraJump((prev) => ({
       centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
       zoomLevel: 14,
-      animationDuration: 500,
-    });
+      key: prev.key + 1,
+    }));
   };
 
   return (
@@ -171,7 +181,13 @@ export function MapScreen() {
         onRegionDidChange={loadVisibleShops}
         onDidFinishLoadingMap={loadVisibleShops}
       >
-        <Camera defaultSettings={CAMERA_DEFAULTS} ref={cameraRef} />
+        <Camera
+          key={camera.key}
+          defaultSettings={{
+            centerCoordinate: camera.centerCoordinate,
+            zoomLevel: camera.zoomLevel,
+          }}
+        />
         {/* Immer eingehängt (nur Sichtbarkeit wechselt): Ein-/Aushängen von
             Karten-Kindern löste auf Android den Kamera-Reset beim Zoomen aus. */}
         <UserLocation visible={hasLocationPermission} />
