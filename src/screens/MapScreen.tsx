@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
 import { fetchShopsInBounds } from '@/lib/api';
+import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
@@ -86,7 +87,8 @@ export function MapScreen() {
       }
       setShops(await fetchShopsInBounds(bounds));
     } catch (e) {
-      Alert.alert('Fehler beim Laden', e instanceof Error ? e.message : 'Unbekannt');
+      const msg = formatLoadError(e);
+      if (msg) Alert.alert('Fehler beim Laden', msg);
     }
   }, []);
 

@@ -8,6 +8,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
 import { fetchShopsInBounds, searchShops } from '@/lib/api';
+import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
 import { distanceKm, formatDistance, formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
@@ -52,7 +53,10 @@ export function ShopListScreen() {
             });
       promise
         .then(setShops)
-        .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
+        .catch((e: Error) => {
+          const msg = formatLoadError(e);
+          if (msg) Alert.alert('Fehler beim Laden', msg);
+        });
     },
     []
   );

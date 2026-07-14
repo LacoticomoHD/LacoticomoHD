@@ -29,6 +29,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
+import { formatLoadError } from '@/lib/errors';
 import { formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
@@ -76,7 +77,10 @@ export function ShopDetailScreen() {
           setPriceHistory(prices);
           setHoursVotes(hv);
         })
-        .catch((e: Error) => Alert.alert('Fehler', e.message));
+        .catch((e: Error) => {
+          const msg = formatLoadError(e);
+          if (msg) Alert.alert('Fehler', msg);
+        });
       if (user) {
         fetchFavoriteIds(user.id)
           .then((ids) => setIsFavorite(ids.has(shopId)))
