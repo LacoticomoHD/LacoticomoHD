@@ -90,7 +90,7 @@ export function AuthScreen() {
             label="Passwort"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            isPassword
             placeholder="••••••••"
           />
 

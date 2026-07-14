@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -60,6 +61,21 @@ export function ShopFormScreen() {
   const [loading, setLoading] = useState(editShopId != null);
   const [name, setName] = useState('');
   const [priceText, setPriceText] = useState('');
+  const [dueruemText, setDueruemText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Damit Eingabefelder (v. a. die unteren Öffnungszeiten) nicht hinter der
+  // Tastatur verschwinden: Tastaturhöhe als zusätzlicher Scroll-Puffer.
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const [addressQuery, setAddressQuery] = useState('');
   const [geoResults, setGeoResults] = useState<GeocodingResult[]>([]);
   const [selected, setSelected] = useState<GeocodingResult | null>(null);
@@ -77,6 +93,9 @@ export function ShopFormScreen() {
       .then((shop) => {
         setName(shop.name);
         setPriceText(shop.doener_preis != null ? shop.doener_preis.toFixed(2).replace('.', ',') : '');
+        setDueruemText(
+          shop.dueruem_preis != null ? shop.dueruem_preis.toFixed(2).replace('.', ',') : ''
+        );
         setAddressQuery(shop.address);
         setSelected({
           displayName: shop.address,
@@ -118,8 +137,8 @@ export function ShopFormScreen() {
   const setDay = (day: Weekday, patch: Partial<DayInput>) =>
     setDays((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
 
-  const parsePrice = (): { ok: boolean; value: number | null } => {
-    const trimmed = priceText.trim();
+  const parsePrice = (text: string): { ok: boolean; value: number | null } => {
+    const trimmed = text.trim();
     if (!trimmed) return { ok: true, value: null };
     const value = parseFloat(trimmed.replace(',', '.'));
     if (Number.isNaN(value) || value <= 0 || value >= 50) return { ok: false, value: null };
@@ -157,9 +176,14 @@ export function ShopFormScreen() {
       Alert.alert('Fehler', 'Bitte eine Adresse suchen und auswählen.');
       return;
     }
-    const price = parsePrice();
+    const price = parsePrice(priceText);
     if (!price.ok) {
       Alert.alert('Fehler', 'Ungültiger Dönerpreis. Beispiel: 6,50');
+      return;
+    }
+    const dueruemPrice = parsePrice(dueruemText);
+    if (!dueruemPrice.ok) {
+      Alert.alert('Fehler', 'Ungültiger Dürüm-Preis. Beispiel: 7,50');
       return;
     }
     for (const day of WEEKDAYS) {
@@ -187,6 +211,7 @@ export function ShopFormScreen() {
       opening_hours,
       features,
       doener_preis: price.value,
+      dueruem_preis: dueruemPrice.value,
       city: selected.city,
     };
 
@@ -237,18 +262,31 @@ export function ShopFormScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: theme.colors.background }}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 48 + keyboardHeight }]}
       keyboardShouldPersistTaps="handled"
     >
       <TextField label="Name des Ladens" value={name} onChangeText={setName} placeholder="z. B. Dönerbude Ali" />
 
-      <TextField
-        label="Preis Standard-Döner in € (optional)"
-        value={priceText}
-        onChangeText={setPriceText}
-        placeholder="z. B. 6,50"
-        keyboardType="decimal-pad"
-      />
+      <View style={styles.priceRow}>
+        <View style={styles.priceCol}>
+          <TextField
+            label="🥙 Döner in € (optional)"
+            value={priceText}
+            onChangeText={setPriceText}
+            placeholder="z. B. 6,50"
+            keyboardType="decimal-pad"
+          />
+        </View>
+        <View style={styles.priceCol}>
+          <TextField
+            label="🌯 Dürüm/Yufka in € (optional)"
+            value={dueruemText}
+            onChangeText={setDueruemText}
+            placeholder="z. B. 7,50"
+            keyboardType="decimal-pad"
+          />
+        </View>
+      </View>
 
       <TextField
         label="Adresse"
@@ -371,6 +409,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     padding: 12,
   },
+  priceCol: { flex: 1 },
+  priceRow: { flexDirection: 'row', gap: 10 },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10, marginTop: 24 },
   spacer: { height: 12 },
   timeInput: { textAlign: 'center', width: 90 },

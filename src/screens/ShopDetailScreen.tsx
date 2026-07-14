@@ -149,11 +149,18 @@ export function ShopDetailScreen() {
         >
           {open ? '● Jetzt geöffnet' : '● Geschlossen'}
         </Text>
-        {shop.doener_preis != null ? (
-          <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: '800' }}>
-            🥙 Döner: {formatPrice(shop.doener_preis)}
-          </Text>
-        ) : null}
+        <View style={styles.priceCol}>
+          {shop.doener_preis != null ? (
+            <Text style={{ color: theme.colors.accent, fontSize: 15, fontWeight: '800' }}>
+              🥙 {formatPrice(shop.doener_preis)}
+            </Text>
+          ) : null}
+          {shop.dueruem_preis != null ? (
+            <Text style={{ color: theme.colors.accent, fontSize: 15, fontWeight: '800' }}>
+              🌯 {formatPrice(shop.dueruem_preis)}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       {/* Preisverlauf, sobald es mehr als einen erfassten Preis gibt */}
@@ -304,16 +311,14 @@ export function ShopDetailScreen() {
           })
         }
       />
-      {user && shop.created_by === user.id ? (
-        <Pressable
-          onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}
-          style={styles.reportLink}
-        >
-          <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
-            ✏️ Eintrag bearbeiten (von dir angelegt)
-          </Text>
-        </Pressable>
-      ) : null}
+      <Pressable
+        onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}
+        style={styles.reportLink}
+      >
+        <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
+          ✏️ Eintrag bearbeiten (Adresse, Zeiten, Preise)
+        </Text>
+      </Pressable>
       <Pressable
         onPress={() =>
           navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name })
@@ -355,6 +360,7 @@ const styles = StyleSheet.create({
   },
   name: { flex: 1, fontSize: 26, fontWeight: '800' },
   nameRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+  priceCol: { alignItems: 'flex-end', gap: 2 },
   reportLink: { alignSelf: 'center', marginTop: 16, padding: 4 },
   statusRow: {
     alignItems: 'center',

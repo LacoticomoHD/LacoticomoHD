@@ -115,6 +115,8 @@ export interface Shop {
   features: ShopFeature[];
   /** Preis des Standard-Döners in Euro, optional. */
   doener_preis: number | null;
+  /** Preis für Dürüm/Yufka in Euro, optional. */
+  dueruem_preis: number | null;
   /** Stadt (für Bestenliste und Dönerpreis-Index). */
   city: string | null;
   created_by: string | null;

@@ -304,6 +304,7 @@ export interface NewShopInput {
   opening_hours: OpeningHours;
   features: ShopFeature[];
   doener_preis: number | null;
+  dueruem_preis: number | null;
   city: string | null;
 }
 

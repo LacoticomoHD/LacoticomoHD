@@ -23,7 +23,12 @@ import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
 
 // Start: Karlsruhe – hier begann die Community. [Längengrad, Breitengrad]
+// Wird beim Start durch den eigenen Standort ersetzt, sobald die Freigabe da ist.
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
+
+// WICHTIG: stabile Objekt-Identität – die Kamera-Kinder der Karte dürfen sich
+// zwischen Renders nicht verändern, sonst springt die Kamera zurück (Android).
+const CAMERA_DEFAULTS = { centerCoordinate: INITIAL_CENTER, zoomLevel: 11 };
 
 // Kartenstil: Bevorzugt eine komplette Style-URL (z. B. MapTiler-Vektorkarte) aus
 // EXPO_PUBLIC_MAP_STYLE_URL; alternativ Raster-Tiles über EXPO_PUBLIC_TILE_URL.
@@ -92,10 +97,26 @@ export function MapScreen() {
     }, [loadVisibleShops])
   );
 
+  // Beim Start: Wenn die Standortfreigabe schon erteilt ist, direkt zur eigenen
+  // Position springen (kein Berechtigungs-Popup – das kommt erst beim 📍-Knopf).
   useEffect(() => {
-    Location.getForegroundPermissionsAsync().then(({ status }) =>
-      setHasLocationPermission(status === 'granted')
-    );
+    (async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      setHasLocationPermission(true);
+      const pos =
+        (await Location.getLastKnownPositionAsync()) ??
+        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(
+          () => null
+        ));
+      if (pos) {
+        cameraRef.current?.setCamera({
+          centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
+          zoomLevel: 13,
+          animationDuration: 0,
+        });
+      }
+    })();
   }, []);
 
   // Läden als GeoJSON für die GL-Kreis-Ebene. Wichtig: Die Marker sind KEINE
@@ -148,8 +169,10 @@ export function MapScreen() {
         onRegionDidChange={loadVisibleShops}
         onDidFinishLoadingMap={loadVisibleShops}
       >
-        <Camera defaultSettings={{ centerCoordinate: INITIAL_CENTER, zoomLevel: 11 }} ref={cameraRef} />
-        {hasLocationPermission ? <UserLocation /> : null}
+        <Camera defaultSettings={CAMERA_DEFAULTS} ref={cameraRef} />
+        {/* Immer eingehängt (nur Sichtbarkeit wechselt): Ein-/Aushängen von
+            Karten-Kindern löste auf Android den Kamera-Reset beim Zoomen aus. */}
+        <UserLocation visible={hasLocationPermission} />
         <ShapeSource id="shops" shape={shopFeatures} onPress={onShopPress} hitbox={{ width: 24, height: 24 }}>
           <CircleLayer
             id="shop-circles"

@@ -17,6 +17,8 @@ create table public.shops (
   features      text[] not null default '{}',
   -- Preis des Standard-Döners in Euro (optional)
   doener_preis  numeric(5, 2) check (doener_preis is null or (doener_preis > 0 and doener_preis < 50)),
+  -- Preis für Dürüm/Yufka in Euro (optional)
+  dueruem_preis numeric(5, 2) check (dueruem_preis is null or (dueruem_preis > 0 and dueruem_preis < 50)),
   -- Stadt (für Bestenliste und Dönerpreis-Index)
   city          text,
   -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
@@ -293,8 +295,11 @@ create policy "shops_select" on public.shops
 create policy "shops_insert" on public.shops
   for insert to authenticated with check (created_by = auth.uid());
 
-create policy "shops_update_own" on public.shops
-  for update to authenticated using (created_by = auth.uid());
+-- Läden dürfen von allen Angemeldeten gepflegt werden (Wikipedia-Prinzip:
+-- Adressen/Öffnungszeiten korrigiert die Community, Missbrauch fangen
+-- Meldungen + Admin ab). Löschen bleibt dem Ersteller vorbehalten.
+create policy "shops_update_any" on public.shops
+  for update to authenticated using (true);
 
 create policy "shops_delete_own" on public.shops
   for delete to authenticated using (created_by = auth.uid());
