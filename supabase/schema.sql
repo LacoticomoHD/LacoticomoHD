@@ -19,13 +19,15 @@ create table public.shops (
   doener_preis  numeric(5, 2) check (doener_preis is null or (doener_preis > 0 and doener_preis < 50)),
   -- Preis für Dürüm/Yufka in Euro (optional)
   dueruem_preis numeric(5, 2) check (dueruem_preis is null or (dueruem_preis > 0 and dueruem_preis < 50)),
+  -- Wann der Dönerpreis zuletzt von der Community bestätigt wurde
+  preis_bestaetigt_am timestamptz,
   -- Stadt (für Bestenliste und Dönerpreis-Index)
   city          text,
   -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
   created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),
   constraint valid_features check (
-    features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht']::text[]
+    features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht']::text[]
   )
 );
 
@@ -75,7 +77,7 @@ create table public.shop_feature_votes (
   shop_id    uuid not null references public.shops (id) on delete cascade,
   user_id    uuid not null references auth.users (id) on delete cascade,
   feature    text not null check (
-    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht')
+    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
   ),
   vote       smallint not null check (vote in (-1, 1)),
   created_at timestamptz not null default now(),

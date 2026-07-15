@@ -32,6 +32,7 @@ export const SHOP_FEATURES = [
   'joghurtsosse',
   'knoblauchsosse',
   'scharfe_sosse',
+  'cocktailsosse',
   'ayran_hausgemacht',
 ] as const;
 
@@ -49,6 +50,7 @@ export const SHOP_FEATURE_LABELS: Record<ShopFeature, string> = {
   joghurtsosse: 'Joghurtsoße',
   knoblauchsosse: 'Knoblauchsoße',
   scharfe_sosse: 'Scharfe Soße',
+  cocktailsosse: 'Cocktailsoße',
   ayran_hausgemacht: 'Ayran aus eigener Herstellung',
 };
 
@@ -64,6 +66,7 @@ export const SHOP_FEATURE_ICONS: Record<ShopFeature, string> = {
   joghurtsosse: '🥣',
   knoblauchsosse: '🧄',
   scharfe_sosse: '🌶️',
+  cocktailsosse: '🍹',
   ayran_hausgemacht: '🥤',
 };
 
@@ -117,6 +120,8 @@ export interface Shop {
   doener_preis: number | null;
   /** Preis für Dürüm/Yufka in Euro, optional. */
   dueruem_preis: number | null;
+  /** Wann der Dönerpreis zuletzt von der Community bestätigt wurde. */
+  preis_bestaetigt_am: string | null;
   /** Stadt (für Bestenliste und Dönerpreis-Index). */
   city: string | null;
   created_by: string | null;

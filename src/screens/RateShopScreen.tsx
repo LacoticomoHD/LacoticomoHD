@@ -5,15 +5,19 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { StarRating } from '@/components/StarRating';
+import { TextField } from '@/components/TextField';
 import {
+  confirmPrice,
   fetchMyFeatureVotes,
   fetchMyRating,
+  fetchShop,
   RatingInput,
   saveFeatureVotes,
+  updateDoenerPreis,
   upsertRating,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
-import { distanceKm } from '@/lib/geo';
+import { distanceKm, formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
@@ -50,6 +54,16 @@ export function RateShopScreen() {
   const [existing, setExisting] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Preis-Frischehalter
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [priceAnswer, setPriceAnswer] = useState<'stimmt' | 'anders' | null>(null);
+  const [newPriceText, setNewPriceText] = useState('');
+
+  useEffect(() => {
+    fetchShop(shopId)
+      .then((shop) => setCurrentPrice(shop.doener_preis))
+      .catch(() => {});
+  }, [shopId]);
 
   useEffect(() => {
     if (!user) return;
@@ -105,6 +119,16 @@ export function RateShopScreen() {
       Alert.alert('Unvollständig', 'Bitte vergib in jeder Kategorie mindestens einen Stern.');
       return;
     }
+    // Preis-Frischehalter: Eingabe prüfen, bevor irgendetwas gespeichert wird.
+    let priceUpdate: number | null = null;
+    if ((priceAnswer === 'anders' || (currentPrice == null && newPriceText.trim())) && newPriceText.trim()) {
+      const parsed = parseFloat(newPriceText.trim().replace(',', '.'));
+      if (Number.isNaN(parsed) || parsed <= 0 || parsed >= 50) {
+        Alert.alert('Fehler', 'Ungültiger Dönerpreis. Beispiel: 6,50');
+        return;
+      }
+      priceUpdate = Math.round(parsed * 100) / 100;
+    }
     setBusy(true);
     try {
       // Einmal verifiziert bleibt verifiziert – auch wenn später von zu Hause angepasst wird.
@@ -112,6 +136,11 @@ export function RateShopScreen() {
       // Erst die Bewertung – sie ist die Voraussetzung, um über Besonderheiten abzustimmen.
       await upsertRating(shopId, user.id, values, verified);
       await saveFeatureVotes(shopId, user.id, votes);
+      // Preis-Feedback ist Bonus – Fehler hier sollen die Bewertung nicht blockieren.
+      try {
+        if (priceUpdate != null) await updateDoenerPreis(shopId, priceUpdate);
+        else if (priceAnswer === 'stimmt' && currentPrice != null) await confirmPrice(shopId);
+      } catch {}
       Alert.alert(
         'Danke!',
         (existing ? 'Deine Bewertung wurde aktualisiert.' : 'Deine Bewertung wurde gespeichert.') +
@@ -204,6 +233,84 @@ export function RateShopScreen() {
         })}
       </View>
 
+      {/* Preis-Frischehalter */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        💶 Preis-Check (optional)
+      </Text>
+      {currentPrice != null ? (
+        <>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
+            Kostet der Döner hier noch {formatPrice(currentPrice)}?
+          </Text>
+          <View style={styles.priceRow}>
+            <Pressable
+              onPress={() => setPriceAnswer(priceAnswer === 'stimmt' ? null : 'stimmt')}
+              style={[
+                styles.priceChip,
+                {
+                  backgroundColor:
+                    priceAnswer === 'stimmt' ? theme.colors.success : theme.colors.surface,
+                  borderColor:
+                    priceAnswer === 'stimmt' ? theme.colors.success : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: priceAnswer === 'stimmt' ? theme.colors.onPrimary : theme.colors.text,
+                  fontWeight: '600',
+                }}
+              >
+                ✓ Stimmt noch
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setPriceAnswer(priceAnswer === 'anders' ? null : 'anders')}
+              style={[
+                styles.priceChip,
+                {
+                  backgroundColor:
+                    priceAnswer === 'anders' ? theme.colors.danger : theme.colors.surface,
+                  borderColor:
+                    priceAnswer === 'anders' ? theme.colors.danger : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: priceAnswer === 'anders' ? theme.colors.onPrimary : theme.colors.text,
+                  fontWeight: '600',
+                }}
+              >
+                ✗ Ist jetzt anders
+              </Text>
+            </Pressable>
+          </View>
+          {priceAnswer === 'anders' ? (
+            <TextField
+              label="Neuer Dönerpreis in €"
+              value={newPriceText}
+              onChangeText={setNewPriceText}
+              placeholder="z. B. 7,00"
+              keyboardType="decimal-pad"
+            />
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
+            Für diesen Laden ist noch kein Dönerpreis bekannt – weißt du ihn?
+          </Text>
+          <TextField
+            label="Dönerpreis in € (optional)"
+            value={newPriceText}
+            onChangeText={setNewPriceText}
+            placeholder="z. B. 6,50"
+            keyboardType="decimal-pad"
+          />
+        </>
+      )}
+
       <View style={styles.spacer} />
       <Button
         title={existing ? 'Bewertung aktualisieren' : 'Bewertung abschicken'}
@@ -224,6 +331,13 @@ const styles = StyleSheet.create({
   },
   featureWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   label: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  priceChip: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  priceRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   row: {
     borderRadius: 16,
     borderWidth: 1,

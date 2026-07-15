@@ -12,6 +12,7 @@
 alter table public.shops   add column if not exists doener_preis  numeric(5, 2);
 alter table public.shops   add column if not exists dueruem_preis numeric(5, 2);
 alter table public.shops   add column if not exists city          text;
+alter table public.shops   add column if not exists preis_bestaetigt_am timestamptz;
 alter table public.ratings add column if not exists verified      boolean not null default false;
 alter table public.reports add column if not exists status        text not null default 'offen';
 
@@ -25,7 +26,7 @@ alter table public.shops
 -- Besonderheiten-Liste auf den aktuellen Stand (12 Merkmale)
 alter table public.shops drop constraint if exists valid_features;
 alter table public.shops add constraint valid_features check (
-  features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht']::text[]
+  features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht']::text[]
 );
 
 -- Meldegründe auf den aktuellen Stand
@@ -49,7 +50,7 @@ create table if not exists public.shop_feature_votes (
   shop_id    uuid not null references public.shops (id) on delete cascade,
   user_id    uuid not null references auth.users (id) on delete cascade,
   feature    text not null check (
-    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'ayran_hausgemacht')
+    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
   ),
   vote       smallint not null check (vote in (-1, 1)),
   created_at timestamptz not null default now(),
@@ -74,6 +75,12 @@ create table if not exists public.hours_votes (
   vote       smallint not null check (vote in (-1, 1)),
   created_at timestamptz not null default now(),
   primary key (shop_id, user_id)
+);
+
+-- Besonderheiten-Liste auch in der (ggf. schon vorhandenen) Abstimmungs-Tabelle aktualisieren
+alter table public.shop_feature_votes drop constraint if exists shop_feature_votes_feature_check;
+alter table public.shop_feature_votes add constraint shop_feature_votes_feature_check check (
+  feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
 );
 
 create index if not exists ratings_shop_id_idx        on public.ratings (shop_id);

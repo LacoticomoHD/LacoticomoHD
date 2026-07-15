@@ -392,6 +392,28 @@ export async function setReportStatus(reportId: string, status: 'offen' | 'erled
 }
 
 // ---------------------------------------------------------------------------
+// Preis-Frischehalter: Community bestätigt oder korrigiert den Dönerpreis
+// ---------------------------------------------------------------------------
+
+/** Bestätigt den aktuellen Dönerpreis („stimmt noch"). */
+export async function confirmPrice(shopId: string) {
+  const { error } = await supabase
+    .from('shops')
+    .update({ preis_bestaetigt_am: new Date().toISOString() })
+    .eq('id', shopId);
+  if (error) throw new Error(error.message);
+}
+
+/** Setzt/korrigiert den Dönerpreis (Preisänderung landet per Trigger in der Historie). */
+export async function updateDoenerPreis(shopId: string, preis: number) {
+  const { error } = await supabase
+    .from('shops')
+    .update({ doener_preis: preis, preis_bestaetigt_am: new Date().toISOString() })
+    .eq('id', shopId);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
 // Dönerpreis-Historie
 // ---------------------------------------------------------------------------
 

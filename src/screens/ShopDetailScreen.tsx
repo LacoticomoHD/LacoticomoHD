@@ -262,6 +262,17 @@ export function ShopDetailScreen() {
         </Text>
       ) : null}
 
+      {shop.preis_bestaetigt_am ? (
+        <Text style={[styles.priceHistory, { color: theme.colors.success }]}>
+          💶 Preis zuletzt bestätigt am{' '}
+          {new Date(shop.preis_bestaetigt_am).toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })}
+        </Text>
+      ) : null}
+
       {/* Bewertung im Detail: Balken statt Sterne-Reihen */}
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <View style={styles.summaryHeader}>
