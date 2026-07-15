@@ -15,6 +15,14 @@
         "NSLocationWhenInUseUsageDescription": "Don Döner nutzt deinen Standort, um Dönerläden in deiner Nähe auf der Karte anzuzeigen."
       }
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "baseUrl": "/LacoticomoHD"
+    },
     "android": {
       "package": "de.dondoener.app",
       "adaptiveIcon": {

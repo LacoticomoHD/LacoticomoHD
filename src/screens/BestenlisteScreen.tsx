@@ -71,9 +71,10 @@ export function BestenlisteScreen() {
             s.doener_preis != null ? ` (${formatPrice(s.doener_preis)})` : ''
           }`
       );
+    // Auf Web/Desktop gibt es nicht überall einen Teilen-Dialog – Fehler still schlucken.
     await Share.share({
       message: `${title} – bewertet mit Don Döner:\n\n${lines.join('\n')}`,
-    });
+    }).catch(() => {});
   };
 
   const cityChip = (active: boolean) => [

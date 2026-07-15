@@ -4,8 +4,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/AuthContext';
 import { FilterProvider } from '@/lib/FilterContext';
+import { installWebAlert } from '@/lib/webAlert';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
+
+installWebAlert();
 
 function AppInner() {
   const { theme } = useTheme();
