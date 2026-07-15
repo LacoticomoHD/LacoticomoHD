@@ -1,0 +1,14 @@
+{
+  "name": "Don Döner",
+  "short_name": "Don Döner",
+  "description": "Dönerläden finden und fair bewerten – Geschmack, Freundlichkeit, Sauberkeit, Preis-Leistung.",
+  "start_url": "/LacoticomoHD/",
+  "scope": "/LacoticomoHD/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#C0392B",
+  "icons": [
+    { "src": "/LacoticomoHD/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/LacoticomoHD/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
