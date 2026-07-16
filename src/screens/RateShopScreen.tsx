@@ -17,16 +17,15 @@ import {
   upsertRating,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { distanceKm, formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
   FeatureVote,
   RATING_CATEGORIES,
-  RATING_CATEGORY_LABELS,
   RatingCategory,
   SHOP_FEATURE_ICONS,
-  SHOP_FEATURE_LABELS,
   SHOP_FEATURES,
   ShopFeature,
 } from '@/types';
@@ -44,6 +43,7 @@ type VoteState = Partial<Record<ShopFeature, FeatureVote | 0>>;
 
 export function RateShopScreen() {
   const { theme } = useTheme();
+  const { t, categoryLabel, featureLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'RateShop'>>();
   const navigation = useNavigation();
@@ -116,7 +116,7 @@ export function RateShopScreen() {
   const submit = async () => {
     if (!user) return;
     if (RATING_CATEGORIES.some((cat) => values[cat] < 1)) {
-      Alert.alert('Unvollständig', 'Bitte vergib in jeder Kategorie mindestens einen Stern.');
+      Alert.alert(t('rate.incomplete'), t('rate.incompleteBody'));
       return;
     }
     // Preis-Frischehalter: Eingabe prüfen, bevor irgendetwas gespeichert wird.
@@ -124,7 +124,7 @@ export function RateShopScreen() {
     if ((priceAnswer === 'anders' || (currentPrice == null && newPriceText.trim())) && newPriceText.trim()) {
       const parsed = parseFloat(newPriceText.trim().replace(',', '.'));
       if (Number.isNaN(parsed) || parsed <= 0 || parsed >= 50) {
-        Alert.alert('Fehler', 'Ungültiger Dönerpreis. Beispiel: 6,50');
+        Alert.alert(t('common.error'), t('rate.priceInvalid'));
         return;
       }
       priceUpdate = Math.round(parsed * 100) / 100;
@@ -142,13 +142,13 @@ export function RateShopScreen() {
         else if (priceAnswer === 'stimmt' && currentPrice != null) await confirmPrice(shopId);
       } catch {}
       Alert.alert(
-        'Danke!',
-        (existing ? 'Deine Bewertung wurde aktualisiert.' : 'Deine Bewertung wurde gespeichert.') +
-          (verified ? '\n\n📍 Vor Ort verifiziert – deine Bewertung trägt das ✓-Siegel!' : ''),
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        t('rate.thanks'),
+        (existing ? t('rate.savedEdit') : t('rate.savedNew')) +
+          (verified ? t('rate.verifiedSuffix') : ''),
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Unbekannter Fehler');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     } finally {
       setBusy(false);
     }
@@ -162,8 +162,8 @@ export function RateShopScreen() {
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>
       <Text style={{ color: theme.colors.textSecondary, marginBottom: 8 }}>
         {existing
-          ? 'Du hast diesen Laden schon bewertet – du kannst deine Angaben anpassen.'
-          : 'Vergib 1 bis 5 Sterne pro Kategorie.'}
+          ? t('rate.introEdit')
+          : t('rate.introNew')}
       </Text>
       <Text
         style={[
@@ -175,8 +175,8 @@ export function RateShopScreen() {
         ]}
       >
         {alreadyVerified
-          ? '✓ Diese Bewertung ist vor Ort verifiziert.'
-          : '📍 Tipp: Bewerte direkt beim Laden (mit Standortfreigabe) – dann bekommt deine Bewertung das „✓ vor Ort verifiziert"-Siegel. Gespeichert wird nur ja/nein, nie dein Standort.'}
+          ? t('rate.verifiedAlready')
+          : t('rate.verifyHint')}
       </Text>
 
       {RATING_CATEGORIES.map((cat) => (
@@ -188,19 +188,17 @@ export function RateShopScreen() {
           ]}
         >
           <Text style={[styles.label, { color: theme.colors.text }]}>
-            {RATING_CATEGORY_LABELS[cat]}
+            {categoryLabel(cat)}
           </Text>
           <StarRating value={values[cat]} onChange={(v) => setCategory(cat, v)} size={30} />
         </View>
       ))}
 
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Besonderheiten (optional)
+        {t('rate.featuresTitle')}
       </Text>
       <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
-        Was bietet dieser Laden wirklich an? Tippen wechselt: einmal = ✓ vorhanden, zweimal = ✗
-        nicht vorhanden, dreimal = keine Angabe. Angezeigt wird eine Besonderheit erst, wenn die
-        Community sie mehrheitlich bestätigt.
+        {t('rate.featuresHint')}
       </Text>
       <View style={styles.featureWrap}>
         {SHOP_FEATURES.map((f) => {
@@ -226,7 +224,7 @@ export function RateShopScreen() {
             >
               <Text style={{ color: textColor, fontSize: 14 }}>
                 {vote === 1 ? '✓ ' : vote === -1 ? '✗ ' : ''}
-                {SHOP_FEATURE_ICONS[f]} {SHOP_FEATURE_LABELS[f]}
+                {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
               </Text>
             </Pressable>
           );
@@ -235,12 +233,12 @@ export function RateShopScreen() {
 
       {/* Preis-Frischehalter */}
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        💶 Preis-Check (optional)
+        {t('rate.priceCheck')}
       </Text>
       {currentPrice != null ? (
         <>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
-            Kostet der Döner hier noch {formatPrice(currentPrice)}?
+            {t('rate.priceStillQ', { price: formatPrice(currentPrice) })}
           </Text>
           <View style={styles.priceRow}>
             <Pressable
@@ -261,7 +259,7 @@ export function RateShopScreen() {
                   fontWeight: '600',
                 }}
               >
-                ✓ Stimmt noch
+                {t('rate.priceStillYes')}
               </Text>
             </Pressable>
             <Pressable
@@ -282,13 +280,13 @@ export function RateShopScreen() {
                   fontWeight: '600',
                 }}
               >
-                ✗ Ist jetzt anders
+                {t('rate.priceDifferent')}
               </Text>
             </Pressable>
           </View>
           {priceAnswer === 'anders' ? (
             <TextField
-              label="Neuer Dönerpreis in €"
+              label={t('rate.newPrice')}
               value={newPriceText}
               onChangeText={setNewPriceText}
               placeholder="z. B. 7,00"
@@ -299,10 +297,10 @@ export function RateShopScreen() {
       ) : (
         <>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
-            Für diesen Laden ist noch kein Dönerpreis bekannt – weißt du ihn?
+            {t('rate.priceUnknown')}
           </Text>
           <TextField
-            label="Dönerpreis in € (optional)"
+            label={t('rate.priceOptional')}
             value={newPriceText}
             onChangeText={setNewPriceText}
             placeholder="z. B. 6,50"
@@ -313,7 +311,7 @@ export function RateShopScreen() {
 
       <View style={styles.spacer} />
       <Button
-        title={existing ? 'Bewertung aktualisieren' : 'Bewertung abschicken'}
+        title={existing ? t('rate.submitEdit') : t('rate.submitNew')}
         onPress={submit}
         loading={busy}
       />

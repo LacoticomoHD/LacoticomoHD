@@ -4,33 +4,30 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
+import { LanguagePicker } from '@/components/LanguagePicker';
+import { useI18n } from '@/i18n/I18nContext';
 import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
 import { RatingWithShop } from '@/types';
 
-/** Döner-Pass: Abzeichen nach Anzahl bewerteter Läden. */
+/** Döner-Pass: Abzeichen nach Anzahl bewerteter Läden (Schwellen + Übersetzungsschlüssel). */
 const BADGES = [
-  { min: 100, label: '🥇 Gold-Döner' },
-  { min: 25, label: '🥈 Silber-Döner' },
-  { min: 5, label: '🥉 Bronze-Döner' },
+  { min: 100, key: 'profile.badgeGold' },
+  { min: 25, key: 'profile.badgeSilver' },
+  { min: 5, key: 'profile.badgeBronze' },
 ] as const;
 
-function badgeInfo(count: number): { current: string | null; next: string | null; missing: number } {
-  const current = BADGES.find((b) => count >= b.min)?.label ?? null;
+function badgeInfo(count: number): { currentKey: string | null; nextKey: string | null; missing: number } {
+  const current = BADGES.find((b) => count >= b.min) ?? null;
   const next = [...BADGES].reverse().find((b) => count < b.min) ?? null;
-  return { current, next: next?.label ?? null, missing: next ? next.min - count : 0 };
+  return { currentKey: current?.key ?? null, nextKey: next?.key ?? null, missing: next ? next.min - count : 0 };
 }
-
-const MODES: { key: ThemeMode; label: string }[] = [
-  { key: 'system', label: 'System' },
-  { key: 'light', label: 'Hell' },
-  { key: 'dark', label: 'Dunkel' },
-];
 
 export function ProfileScreen() {
   const { theme, mode, setMode } = useTheme();
+  const { t } = useI18n();
   const { user, signOut } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [deleting, setDeleting] = useState(false);
@@ -50,35 +47,37 @@ export function ProfileScreen() {
   ).size;
   const badge = badgeInfo(myRatings.length);
 
+  const MODES: { key: ThemeMode; label: string }[] = [
+    { key: 'system', label: t('profile.themeSystem') },
+    { key: 'light', label: t('profile.themeLight') },
+    { key: 'dark', label: t('profile.themeDark') },
+  ];
+
   const confirmSignOut = () =>
-    Alert.alert('Abmelden', 'Möchtest du dich wirklich abmelden?', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Abmelden', style: 'destructive', onPress: () => signOut() },
+    Alert.alert(t('profile.logout'), t('profile.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.logout'), style: 'destructive', onPress: () => signOut() },
     ]);
 
   const confirmDeleteAccount = () =>
-    Alert.alert(
-      'Konto löschen',
-      'Dein Konto und alle deine Bewertungen werden unwiderruflich gelöscht. Von dir eingetragene Läden bleiben als Community-Daten erhalten. Fortfahren?',
-      [
-        { text: 'Abbrechen', style: 'cancel' },
-        {
-          text: 'Endgültig löschen',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await deleteOwnAccount();
-              await signOut();
-            } catch (e) {
-              Alert.alert('Fehler', e instanceof Error ? e.message : 'Löschen fehlgeschlagen');
-            } finally {
-              setDeleting(false);
-            }
-          },
+    Alert.alert(t('profile.deleteConfirmTitle'), t('profile.deleteConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deleteConfirmYes'),
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await deleteOwnAccount();
+            await signOut();
+          } catch (e) {
+            Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
+          } finally {
+            setDeleting(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
 
   return (
     <ScrollView
@@ -88,8 +87,10 @@ export function ProfileScreen() {
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Konto</Text>
-        <Text style={{ color: theme.colors.textSecondary }}>Angemeldet als</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.account')}
+        </Text>
+        <Text style={{ color: theme.colors.textSecondary }}>{t('profile.loggedInAs')}</Text>
         <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: 2 }}>
           {user?.email}
         </Text>
@@ -98,7 +99,18 @@ export function ProfileScreen() {
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Erscheinungsbild</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.language')}
+        </Text>
+        <LanguagePicker />
+      </View>
+
+      <View
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.appearance')}
+        </Text>
         <View style={styles.modeRow}>
           {MODES.map((m) => {
             const active = mode === m.key;
@@ -131,41 +143,45 @@ export function ProfileScreen() {
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Über Don Döner</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.about')}
+        </Text>
         <Text style={{ color: theme.colors.textSecondary, lineHeight: 20 }}>
-          Don Döner ist eine reine Bewertungs-App für Dönerläden. Bewertet wird objektiv mit
-          Sternen in den Kategorien Geschmack, Freundlichkeit, Sauberkeit, Preis-Leistung und
-          Wartezeit – ohne Kommentare. Kartendaten © OpenStreetMap-Mitwirkende, Adresssuche über
-          Nominatim.
+          {t('profile.aboutText')}
         </Text>
       </View>
 
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>🎖️ Dein Döner-Pass</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('profile.pass')}</Text>
         <View style={styles.passRow}>
           <View style={styles.passStat}>
             <Text style={[styles.passNumber, { color: theme.colors.primary }]}>
               {myRatings.length}
             </Text>
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {myRatings.length === 1 ? 'Laden bewertet' : 'Läden bewertet'}
+              {myRatings.length === 1 ? t('profile.passShop') : t('profile.passShops')}
             </Text>
           </View>
           <View style={styles.passStat}>
             <Text style={[styles.passNumber, { color: theme.colors.primary }]}>{cityCount}</Text>
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {cityCount === 1 ? 'Stadt erkundet' : 'Städte erkundet'}
+              {cityCount === 1 ? t('profile.passCity') : t('profile.passCities')}
             </Text>
           </View>
         </View>
         <Text style={{ color: theme.colors.text, marginTop: 10 }}>
-          {badge.current ?? 'Noch kein Abzeichen'}
-          {badge.next
-            ? `  ·  noch ${badge.missing} ${badge.missing === 1 ? 'Bewertung' : 'Bewertungen'} bis ${badge.next}`
-            : badge.current
-              ? '  ·  Höchststufe erreicht! 👑'
+          {badge.currentKey ? t(badge.currentKey) : t('profile.noBadge')}
+          {badge.nextKey
+            ? t('profile.badgeProgress', {
+                n: `${badge.missing} ${
+                  badge.missing === 1 ? t('profile.ratingWord') : t('profile.ratingsWord')
+                }`,
+                next: t(badge.nextKey),
+              })
+            : badge.currentKey
+              ? t('profile.badgeMax')
               : ''}
         </Text>
       </View>
@@ -179,7 +195,7 @@ export function ProfileScreen() {
           ]}
         >
           <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
-            🚩 Meldungen (Admin)
+            {t('profile.reportsAdmin')}
           </Text>
           <Text style={{ color: theme.colors.textSecondary }}>›</Text>
         </Pressable>
@@ -192,7 +208,7 @@ export function ProfileScreen() {
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
         ]}
       >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>❤️ Meine Stammläden</Text>
+        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.favorites')}</Text>
         <Text style={{ color: theme.colors.textSecondary }}>›</Text>
       </Pressable>
 
@@ -203,7 +219,7 @@ export function ProfileScreen() {
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
         ]}
       >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>⭐ Meine Bewertungen</Text>
+        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.myRatings')}</Text>
         <Text style={{ color: theme.colors.textSecondary }}>›</Text>
       </Pressable>
 
@@ -214,17 +230,15 @@ export function ProfileScreen() {
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
         ]}
       >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
-          📄 Impressum & Datenschutz
-        </Text>
+        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.legal')}</Text>
         <Text style={{ color: theme.colors.textSecondary }}>›</Text>
       </Pressable>
 
-      <Button title="Abmelden" onPress={confirmSignOut} variant="danger" />
+      <Button title={t('profile.logout')} onPress={confirmSignOut} variant="danger" />
 
       <Pressable onPress={confirmDeleteAccount} disabled={deleting} style={styles.deleteLink}>
         <Text style={{ color: theme.colors.danger, fontSize: 13 }}>
-          {deleting ? 'Konto wird gelöscht…' : 'Konto endgültig löschen'}
+          {deleting ? t('profile.deleting') : t('profile.deleteAccount')}
         </Text>
       </Pressable>
     </ScrollView>

@@ -7,11 +7,13 @@ import { TextField } from '@/components/TextField';
 import { createReport } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { REPORT_REASON_LABELS, REPORT_REASONS, ReportReason } from '@/types';
+import { REPORT_REASONS, ReportReason } from '@/types';
 
 export function ReportShopScreen() {
   const { theme } = useTheme();
+  const { t, reportReasonLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'ReportShop'>>();
   const navigation = useNavigation();
@@ -24,17 +26,17 @@ export function ReportShopScreen() {
   const submit = async () => {
     if (!user) return;
     if (!reason) {
-      Alert.alert('Fehler', 'Bitte wähle einen Grund aus.');
+      Alert.alert(t('common.error'), t('report.chooseReason'));
       return;
     }
     setBusy(true);
     try {
       await createReport(shopId, user.id, reason, details);
-      Alert.alert('Danke!', 'Deine Meldung wurde übermittelt und wird geprüft.', [
+      Alert.alert(t('report.thanks'), t('report.thanksBody'), [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Meldung fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     } finally {
       setBusy(false);
     }
@@ -48,7 +50,7 @@ export function ReportShopScreen() {
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>
       <Text style={{ color: theme.colors.textSecondary, marginBottom: 20 }}>
-        Was stimmt mit diesem Eintrag nicht?
+        {t('report.what')}
       </Text>
 
       {REPORT_REASONS.map((r) => {
@@ -67,24 +69,24 @@ export function ReportShopScreen() {
           >
             <Text style={{ color: theme.colors.text, fontSize: 16 }}>
               {active ? '◉ ' : '○ '}
-              {REPORT_REASON_LABELS[r]}
+              {reportReasonLabel(r)}
             </Text>
           </Pressable>
         );
       })}
 
       <TextField
-        label="Details (optional)"
+        label={t('report.details')}
         value={details}
         onChangeText={setDetails}
-        placeholder="z. B. die richtige Adresse oder Öffnungszeit"
+        placeholder={t('report.detailsPlaceholder')}
         multiline
         numberOfLines={4}
         maxLength={500}
         style={styles.detailsInput}
       />
 
-      <Button title="Meldung abschicken" onPress={submit} loading={busy} />
+      <Button title={t('report.submit')} onPress={submit} loading={busy} />
     </ScrollView>
   );
 }

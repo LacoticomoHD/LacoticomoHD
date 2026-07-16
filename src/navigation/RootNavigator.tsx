@@ -8,6 +8,7 @@ import {
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { useI18n } from '@/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen } from '@/screens/AuthScreen';
 import { BestenlisteScreen } from '@/screens/BestenlisteScreen';
@@ -38,6 +39,7 @@ const TAB_ICONS: Record<keyof TabParamList, string> = {
 
 function Tabs() {
   const { theme } = useTheme();
+  const { t } = useI18n();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -51,20 +53,25 @@ function Tabs() {
         ),
       })}
     >
-      <Tab.Screen name="Karte" component={MapScreen} options={{ title: 'Don Döner' }} />
-      <Tab.Screen name="Liste" component={ShopListScreen} options={{ title: 'Alle Läden' }} />
+      <Tab.Screen name="Karte" component={MapScreen} options={{ title: t('tab.map') }} />
+      <Tab.Screen
+        name="Liste"
+        component={ShopListScreen}
+        options={{ title: t('tab.list') }}
+      />
       <Tab.Screen
         name="Top10"
         component={BestenlisteScreen}
-        options={{ title: 'Bestenliste', tabBarLabel: 'Top 10' }}
+        options={{ title: t('nav.leaderboard'), tabBarLabel: t('tab.top') }}
       />
-      <Tab.Screen name="Profil" component={ProfileScreen} />
+      <Tab.Screen name="Profil" component={ProfileScreen} options={{ title: t('tab.profile') }} />
     </Tab.Navigator>
   );
 }
 
 export function RootNavigator() {
   const { theme } = useTheme();
+  const { t } = useI18n();
   const { session, loading } = useAuth();
 
   const navTheme = theme.dark
@@ -114,47 +121,47 @@ export function RootNavigator() {
           <Stack.Screen
             name="ShopDetail"
             component={ShopDetailScreen}
-            options={{ title: 'Details' }}
+            options={{ title: t('nav.details') }}
           />
           <Stack.Screen
             name="RateShop"
             component={RateShopScreen}
-            options={{ title: 'Bewerten' }}
+            options={{ title: t('nav.rate') }}
           />
           <Stack.Screen
             name="ReportShop"
             component={ReportShopScreen}
-            options={{ title: 'Eintrag melden' }}
+            options={{ title: t('nav.report') }}
           />
           <Stack.Screen
             name="AddShop"
             component={ShopFormScreen}
-            options={{ title: 'Laden hinzufügen' }}
+            options={{ title: t('nav.addShop') }}
           />
           <Stack.Screen
             name="EditShop"
             component={ShopFormScreen}
-            options={{ title: 'Laden bearbeiten' }}
+            options={{ title: t('nav.editShop') }}
           />
           <Stack.Screen
             name="MyRatings"
             component={MyRatingsScreen}
-            options={{ title: 'Meine Bewertungen' }}
+            options={{ title: t('nav.myRatings') }}
           />
           <Stack.Screen
             name="Favorites"
             component={FavoritesScreen}
-            options={{ title: 'Meine Stammläden' }}
+            options={{ title: t('nav.favorites') }}
           />
           <Stack.Screen
             name="ReportsInbox"
             component={ReportsInboxScreen}
-            options={{ title: 'Meldungen' }}
+            options={{ title: t('nav.reports') }}
           />
           <Stack.Screen
             name="Legal"
             component={LegalScreen}
-            options={{ title: 'Impressum & Datenschutz' }}
+            options={{ title: t('nav.legal') }}
           />
         </Stack.Navigator>
       ) : (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 
 // Impressum mit ladungsfähiger Anschrift ist in Deutschland Pflicht (§ 5 DDG),
@@ -44,6 +45,7 @@ const DATENSCHUTZ = [
 
 export function LegalScreen() {
   const { theme } = useTheme();
+  const { t, lang } = useI18n();
   return (
     <ScrollView
       style={{ backgroundColor: theme.colors.background }}
@@ -52,7 +54,9 @@ export function LegalScreen() {
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Impressum</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('legal.imprint')}
+        </Text>
         <Text style={{ color: theme.colors.text, lineHeight: 22 }}>{IMPRESSUM}</Text>
       </View>
 
@@ -60,8 +64,15 @@ export function LegalScreen() {
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Datenschutzerklärung
+          {t('legal.privacy')}
         </Text>
+        {lang !== 'de' ? (
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: 12, fontStyle: 'italic' }}>
+            {lang === 'tr'
+              ? 'Aşağıdaki yasal metin, hukuken bağlayıcı olduğu için Almanca tutulmuştur.'
+              : 'The following legal text is kept in German, as it is legally binding.'}
+          </Text>
+        ) : null}
         {DATENSCHUTZ.map((section) => (
           <View key={section.title} style={styles.paragraph}>
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginBottom: 4 }}>

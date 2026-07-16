@@ -7,6 +7,7 @@ import { StarRating } from '@/components/StarRating';
 import { fetchMyRatings } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { RATING_CATEGORIES, RatingWithShop } from '@/types';
 
@@ -18,6 +19,7 @@ function ownAverage(rating: RatingWithShop): number {
 
 export function MyRatingsScreen() {
   const { theme } = useTheme();
+  const { t } = useI18n();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [ratings, setRatings] = useState<RatingWithShop[]>([]);
@@ -27,7 +29,7 @@ export function MyRatingsScreen() {
       if (!user) return;
       fetchMyRatings(user.id)
         .then(setRatings)
-        .catch((e: Error) => Alert.alert('Fehler', e.message));
+        .catch((e: Error) => Alert.alert(t('common.error'), e.message));
     }, [user])
   );
 
@@ -39,7 +41,7 @@ export function MyRatingsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            Du hast noch keine Läden bewertet.
+            {t('myratings.empty')}
           </Text>
         }
         renderItem={({ item }) => {
@@ -55,7 +57,7 @@ export function MyRatingsScreen() {
               ]}
             >
               <Text style={[styles.cardName, { color: theme.colors.text }]} numberOfLines={1}>
-                {item.shops?.name ?? 'Gelöschter Laden'}
+                {item.shops?.name ?? t('myratings.deletedShop')}
               </Text>
               <Text
                 style={{ color: theme.colors.textSecondary, fontSize: 13 }}
@@ -66,7 +68,7 @@ export function MyRatingsScreen() {
               <View style={styles.cardFooter}>
                 <StarRating value={avg} size={16} />
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
-                  Dein Schnitt: {avg.toFixed(1)}
+                  {t('myratings.yourAvg', { v: avg.toFixed(1) })}
                 </Text>
               </View>
             </Pressable>

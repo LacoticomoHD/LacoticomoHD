@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nContext';
 import { weekdayKey } from '@/lib/openingHours';
 import { useTheme } from '@/theme/ThemeContext';
-import { OpeningHours, WEEKDAY_LABELS, WEEKDAYS } from '@/types';
+import { OpeningHours, WEEKDAYS } from '@/types';
 
 export function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
   const { theme } = useTheme();
+  const { t, weekdayLabel } = useI18n();
   const today = weekdayKey(new Date());
   return (
     <View>
@@ -22,7 +24,7 @@ export function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
                 width: 110,
               }}
             >
-              {WEEKDAY_LABELS[day]}
+              {weekdayLabel(day)}
             </Text>
             <Text
               style={{
@@ -30,7 +32,7 @@ export function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
                 fontWeight: isToday ? '700' : '400',
               }}
             >
-              {entry ? `${entry.open} – ${entry.close}` : 'Geschlossen'}
+              {entry ? `${entry.open} – ${entry.close}` : t('common.closed')}
             </Text>
           </View>
         );

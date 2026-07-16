@@ -16,6 +16,7 @@ import { StarRating } from '@/components/StarRating';
 import { fetchCityStats, fetchTopShops, TopShopsMode } from '@/lib/api';
 import { formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { CityStats, ShopWithSummary } from '@/types';
 
@@ -23,6 +24,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 export function BestenlisteScreen() {
   const { theme } = useTheme();
+  const { t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [cities, setCities] = useState<CityStats[]>([]);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function BestenlisteScreen() {
         .catch(() => {});
       fetchTopShops(selectedCity, mode)
         .then(setShops)
-        .catch((e: Error) => Alert.alert('Fehler beim Laden', e.message));
+        .catch((e: Error) => Alert.alert(t('common.loadError'), e.message));
     }, [selectedCity, mode])
   );
 
@@ -53,16 +55,16 @@ export function BestenlisteScreen() {
     if (total === 0) return null;
     const weighted =
       withPrice.reduce((acc, c) => acc + (c.preis_schnitt ?? 0) * c.preis_anzahl, 0) / total;
-    return { label: 'Deutschland', schnitt: Math.round(weighted * 100) / 100, anzahl: total };
+    return { label: t('top.germany').replace('🇩🇪 ', ''), schnitt: Math.round(weighted * 100) / 100, anzahl: total };
   }, [cities, selectedCity]);
 
   const share = async () => {
     if (shops.length === 0) return;
-    const scope = selectedCity ?? 'Deutschland';
+    const scope = selectedCity ?? t('top.germany').replace('🇩🇪 ', '');
     const title =
       mode === 'value'
-        ? `🏅 Die besten Döner fürs Geld in ${scope}`
-        : `🥙 Die besten Dönerläden in ${scope}`;
+        ? t('top.shareValue', { city: scope })
+        : t('top.shareRating', { city: scope });
     const lines = shops
       .slice(0, 10)
       .map(
@@ -73,7 +75,7 @@ export function BestenlisteScreen() {
       );
     // Auf Web/Desktop gibt es nicht überall einen Teilen-Dialog – Fehler still schlucken.
     await Share.share({
-      message: `${title} – bewertet mit Don Döner:\n\n${lines.join('\n')}`,
+      message: `${title} ${t('top.shareFooter')}\n\n${lines.join('\n')}`,
     }).catch(() => {});
   };
 
@@ -97,7 +99,7 @@ export function BestenlisteScreen() {
                 fontSize: 13,
               }}
             >
-              🇩🇪 Deutschland
+              {t('top.germany')}
             </Text>
           </Pressable>
           {cities.map((c) => {
@@ -132,7 +134,7 @@ export function BestenlisteScreen() {
               fontSize: 13,
             }}
           >
-            ⭐ Top bewertet
+            {t('top.modeRating')}
           </Text>
         </Pressable>
         <Pressable onPress={() => setMode('value')} style={cityChip(mode === 'value')}>
@@ -143,7 +145,7 @@ export function BestenlisteScreen() {
               fontSize: 13,
             }}
           >
-            🏅 Bester Döner fürs Geld
+            {t('top.modeValue')}
           </Text>
         </Pressable>
       </View>
@@ -156,14 +158,13 @@ export function BestenlisteScreen() {
           ]}
         >
           <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-            📊 Dönerpreis-Index {preisIndex.label}
+            {t('top.priceIndex', { city: preisIndex.label })}
           </Text>
           <Text style={{ color: theme.colors.accent, fontSize: 22, fontWeight: '800' }}>
             {formatPrice(preisIndex.schnitt)}
           </Text>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-            Durchschnitt aus {preisIndex.anzahl}{' '}
-            {preisIndex.anzahl === 1 ? 'gemeldetem Preis' : 'gemeldeten Preisen'}
+            {t('top.priceIndexAvg', { n: preisIndex.anzahl, label: preisIndex.anzahl === 1 ? t('top.priceReport') : t('top.priceReports') })}
           </Text>
         </View>
       ) : null}
@@ -175,8 +176,8 @@ export function BestenlisteScreen() {
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
             {mode === 'value'
-              ? 'Für dieses Ranking braucht es Läden mit Bewertung UND Dönerpreis – trag bei deinen Bewertungen den Preis mit ein!'
-              : 'Hier gibt es noch keine bewerteten Läden – sei die/der Erste!'}
+              ? t('top.emptyValue')
+              : t('top.emptyRating')}
           </Text>
         }
         renderItem={({ item, index }) => (
@@ -223,7 +224,7 @@ export function BestenlisteScreen() {
 
       {shops.length > 0 ? (
         <Pressable onPress={share} style={[styles.shareFab, { backgroundColor: theme.colors.primary }]}>
-          <Text style={{ color: theme.colors.onPrimary, fontWeight: '700' }}>📤 Teilen</Text>
+          <Text style={{ color: theme.colors.onPrimary, fontWeight: '700' }}>{t('top.share')}</Text>
         </Pressable>
       ) : null}
     </View>

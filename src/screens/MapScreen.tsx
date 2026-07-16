@@ -14,6 +14,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
+import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
@@ -76,6 +77,7 @@ export function MapScreen() {
     key: 0,
   });
   const { matchesFilters } = useFilters();
+  const { t } = useI18n();
 
   // Es wird immer nur der sichtbare Kartenausschnitt geladen (deutschlandweit
   // wären es zu viele Läden auf einmal).
@@ -98,7 +100,7 @@ export function MapScreen() {
       setShops(await fetchShopsInBounds(bounds));
     } catch (e) {
       const msg = formatLoadError(e);
-      if (msg) Alert.alert('Fehler beim Laden', msg);
+      if (msg) Alert.alert(t('common.loadError'), msg);
     }
   }, []);
 
@@ -158,7 +160,7 @@ export function MapScreen() {
   const goToMyLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Standort', 'Ohne Standortfreigabe kann die Karte nicht zentriert werden.');
+      Alert.alert(t('map.locationTitle'), t('map.locationDenied'));
       return;
     }
     setHasLocationPermission(true);

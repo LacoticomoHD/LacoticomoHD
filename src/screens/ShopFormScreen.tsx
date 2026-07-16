@@ -13,6 +13,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
+import { useI18n } from '@/i18n/I18nContext';
 import { TextField } from '@/components/TextField';
 import {
   createShop,
@@ -26,7 +27,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
-import { OpeningHours, ShopFeature, WEEKDAY_LABELS, WEEKDAYS, Weekday } from '@/types';
+import { OpeningHours, ShopFeature, WEEKDAYS, Weekday } from '@/types';
 
 const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -53,6 +54,7 @@ function normalizeName(name: string): string {
 /** Formular für "Laden anlegen" (Route AddShop) und "Laden bearbeiten" (Route EditShop). */
 export function ShopFormScreen() {
   const { theme } = useTheme();
+  const { t, weekdayLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'AddShop' | 'EditShop'>>();
   const navigation = useNavigation();
@@ -113,7 +115,7 @@ export function ShopFormScreen() {
         }
         setDays(nextDays);
       })
-      .catch((e: Error) => Alert.alert('Fehler', e.message))
+      .catch((e: Error) => Alert.alert(t('common.error'), e.message))
       .finally(() => setLoading(false));
   }, [editShopId]);
 
@@ -125,10 +127,10 @@ export function ShopFormScreen() {
       const results = await geocodeAddress(addressQuery.trim());
       setGeoResults(results);
       if (results.length === 0) {
-        Alert.alert('Nichts gefunden', 'Versuche es mit einer genaueren Adresse.');
+        Alert.alert(t('form.nothingFound'), t('form.tryPrecise'));
       }
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Adresssuche fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     } finally {
       setSearching(false);
     }
@@ -155,12 +157,12 @@ export function ShopFormScreen() {
         await createShop(input, user.id);
       }
       Alert.alert(
-        'Gespeichert',
-        editShopId ? 'Die Änderungen wurden gespeichert.' : 'Der Dönerladen wurde angelegt.',
+        t('form.savedTitle'),
+        editShopId ? t('form.updatedBody') : t('form.createdBody'),
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     } finally {
       setBusy(false);
     }
@@ -169,30 +171,27 @@ export function ShopFormScreen() {
   const submit = async () => {
     if (!user) return;
     if (!name.trim()) {
-      Alert.alert('Fehler', 'Bitte einen Namen für den Laden angeben.');
+      Alert.alert(t('common.error'), t('form.needName'));
       return;
     }
     if (!selected) {
-      Alert.alert('Fehler', 'Bitte eine Adresse suchen und auswählen.');
+      Alert.alert(t('common.error'), t('form.needAddress'));
       return;
     }
     const price = parsePrice(priceText);
     if (!price.ok) {
-      Alert.alert('Fehler', 'Ungültiger Dönerpreis. Beispiel: 6,50');
+      Alert.alert(t('common.error'), t('rate.priceInvalid'));
       return;
     }
     const dueruemPrice = parsePrice(dueruemText);
     if (!dueruemPrice.ok) {
-      Alert.alert('Fehler', 'Ungültiger Dürüm-Preis. Beispiel: 7,50');
+      Alert.alert(t('common.error'), t('form.dueruemInvalid'));
       return;
     }
     for (const day of WEEKDAYS) {
       const d = days[day];
       if (!d.closed && (!TIME_PATTERN.test(d.open) || !TIME_PATTERN.test(d.close))) {
-        Alert.alert(
-          'Fehler',
-          `Ungültige Öffnungszeit am ${WEEKDAY_LABELS[day]}. Format: HH:MM, z. B. 11:00.`
-        );
+        Alert.alert(t('common.error'), t('form.hoursInvalid', { day: weekdayLabel(day) }));
         return;
       }
     }
@@ -234,11 +233,11 @@ export function ShopFormScreen() {
         });
         if (duplicate) {
           Alert.alert(
-            'Möglicherweise schon vorhanden',
-            `In der Nähe gibt es bereits „${duplicate.name}" (${duplicate.address}). Trotzdem anlegen?`,
+            t('form.duplicateTitle'),
+            t('form.duplicateBody', { name: duplicate.name, addr: duplicate.address }),
             [
               { text: 'Abbrechen', style: 'cancel' },
-              { text: 'Trotzdem anlegen', onPress: () => save(input) },
+              { text: t('form.duplicateAnyway'), onPress: () => save(input) },
             ]
           );
           return;
@@ -265,12 +264,12 @@ export function ShopFormScreen() {
       contentContainerStyle={[styles.content, { paddingBottom: 48 + keyboardHeight }]}
       keyboardShouldPersistTaps="handled"
     >
-      <TextField label="Name des Ladens" value={name} onChangeText={setName} placeholder="z. B. Dönerbude Ali" />
+      <TextField label={t('form.name')} value={name} onChangeText={setName} placeholder={t('form.namePlaceholder')} />
 
       <View style={styles.priceRow}>
         <View style={styles.priceCol}>
           <TextField
-            label="🥙 Döner in € (optional)"
+            label={t('form.doenerPrice')}
             value={priceText}
             onChangeText={setPriceText}
             placeholder="z. B. 6,50"
@@ -279,7 +278,7 @@ export function ShopFormScreen() {
         </View>
         <View style={styles.priceCol}>
           <TextField
-            label="🌯 Dürüm/Yufka in € (optional)"
+            label={t('form.dueruemPrice')}
             value={dueruemText}
             onChangeText={setDueruemText}
             placeholder="z. B. 7,50"
@@ -289,17 +288,17 @@ export function ShopFormScreen() {
       </View>
 
       <TextField
-        label="Adresse"
+        label={t('form.address')}
         value={addressQuery}
         onChangeText={setAddressQuery}
-        placeholder="Straße Hausnummer, Stadt"
+        placeholder={t('form.addressPlaceholder')}
         onSubmitEditing={search}
         returnKeyType="search"
       />
-      <Button title="Adresse suchen" onPress={search} variant="secondary" loading={searching} />
+      <Button title={t('form.searchAddress')} onPress={search} variant="secondary" loading={searching} />
       {selected && geoResults.length === 0 ? (
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 6 }}>
-          ✓ Aktuelle Adresse: {selected.displayName}
+          {t('form.currentAddress', { addr: selected.displayName })}
         </Text>
       ) : null}
 
@@ -326,11 +325,10 @@ export function ShopFormScreen() {
       })}
 
       <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 20 }}>
-        💡 Besonderheiten (Soßen, Fleischsorten, vegan …) werden nicht hier eingetragen,
-        sondern von der Community beim Bewerten bestätigt.
+        {t('form.featuresNote')}
       </Text>
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Öffnungszeiten</Text>
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('form.hours')}</Text>
       {WEEKDAYS.map((day) => {
         const d = days[day];
         return (
@@ -343,10 +341,10 @@ export function ShopFormScreen() {
           >
             <View style={styles.dayHeader}>
               <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
-                {WEEKDAY_LABELS[day]}
+                {weekdayLabel(day)}
               </Text>
               <View style={styles.closedSwitch}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>Geöffnet</Text>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('form.opened')}</Text>
                 <Switch
                   value={!d.closed}
                   onValueChange={(v) => setDay(day, { closed: !v })}
@@ -379,7 +377,7 @@ export function ShopFormScreen() {
 
       <View style={styles.spacer} />
       <Button
-        title={editShopId ? 'Änderungen speichern' : 'Laden anlegen'}
+        title={editShopId ? t('form.saveChanges') : t('form.create')}
         onPress={submit}
         loading={busy}
       />

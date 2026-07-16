@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FilterBar } from '@/components/FilterBar';
 import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
+import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds, searchShops } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
@@ -32,6 +33,7 @@ export function ShopListScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { matchesFilters } = useFilters();
+  const { t } = useI18n();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('rating');
@@ -55,7 +57,7 @@ export function ShopListScreen() {
         .then(setShops)
         .catch((e: Error) => {
           const msg = formatLoadError(e);
-          if (msg) Alert.alert('Fehler beim Laden', msg);
+          if (msg) Alert.alert(t('common.loadError'), msg);
         });
     },
     []
@@ -96,8 +98,8 @@ export function ShopListScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Standort benötigt',
-          'Um nach Entfernung zu sortieren, muss der Standortzugriff erlaubt sein.'
+          t('list.locationNeeded'),
+          t('list.locationNeededBody')
         );
         return;
       }
@@ -136,20 +138,20 @@ export function ShopListScreen() {
         <TextField
           value={query}
           onChangeText={setQuery}
-          placeholder="Deutschlandweit nach Name oder Adresse suchen…"
+          placeholder={t('list.searchPlaceholder')}
         />
       </View>
       <FilterBar />
       <View style={styles.sortRow}>
-        <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>Sortierung:</Text>
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('list.sort')}</Text>
         <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
-            ⭐ Beste zuerst
+            {t('list.sortBest')}
           </Text>
         </Pressable>
         <Pressable onPress={selectDistanceSort} style={sortChip(sortMode === 'distance')}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
-            📍 Nächste zuerst
+            {t('list.sortNearest')}
           </Text>
         </Pressable>
       </View>
@@ -161,9 +163,9 @@ export function ShopListScreen() {
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
             {shops.length === 0
               ? query.trim().length >= 2
-                ? 'Nichts gefunden – anderer Suchbegriff oder Laden auf der Karte mit ＋ eintragen.'
-                : 'In dieser Gegend ist noch kein Dönerladen eingetragen. Füge auf der Karte mit ＋ den ersten hinzu!'
-              : 'Kein Laden passt zu den aktuellen Filtern.'}
+                ? t('list.emptyNothing')
+                : t('list.emptyArea')
+              : t('list.emptyFilter')}
           </Text>
         }
         renderItem={({ item }) => {
@@ -191,7 +193,7 @@ export function ShopListScreen() {
                     fontWeight: '700',
                   }}
                 >
-                  {open ? 'Geöffnet' : 'Geschlossen'}
+                  {open ? t('common.open') : t('common.closed')}
                 </Text>
               </View>
               <Text
@@ -210,7 +212,7 @@ export function ShopListScreen() {
                   </View>
                 ) : (
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
-                    Noch keine Bewertung
+                    {t('common.noRating')}
                   </Text>
                 )}
                 <Text style={{ fontSize: 13 }}>

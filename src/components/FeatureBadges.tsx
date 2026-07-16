@@ -1,8 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { SHOP_FEATURE_ICONS, SHOP_FEATURE_LABELS, ShopFeature } from '@/types';
+import { SHOP_FEATURE_ICONS, ShopFeature } from '@/types';
 
 interface Props {
   features: ShopFeature[];
@@ -12,10 +13,11 @@ interface Props {
 
 export function FeatureBadges({ features, counts }: Props) {
   const { theme } = useTheme();
+  const { t, featureLabel } = useI18n();
   if (features.length === 0) {
     return (
       <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
-        Noch keine Besonderheiten von der Community bestätigt
+        {t('detail.noFeatures')}
       </Text>
     );
   }
@@ -30,7 +32,7 @@ export function FeatureBadges({ features, counts }: Props) {
           ]}
         >
           <Text style={{ color: theme.colors.text, fontSize: 13 }}>
-            {SHOP_FEATURE_ICONS[f]} {SHOP_FEATURE_LABELS[f]}
+            {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
             {counts?.[f] ? (
               <Text style={{ color: theme.colors.textSecondary }}> ✓{counts[f]}</Text>
             ) : null}

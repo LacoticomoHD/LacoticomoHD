@@ -1,14 +1,16 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nContext';
 import { useFilters } from '@/lib/FilterContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { SHOP_FEATURE_ICONS, SHOP_FEATURE_LABELS, SHOP_FEATURES } from '@/types';
+import { SHOP_FEATURE_ICONS, SHOP_FEATURES } from '@/types';
 
 /** Horizontale Chip-Leiste: "Jetzt geöffnet" + Besonderheiten-Filter.
  *  Wird auf Karte und Liste gleichermaßen genutzt (gemeinsamer Zustand). */
 export function FilterBar() {
   const { theme } = useTheme();
+  const { t, featureLabel } = useI18n();
   const { activeFeatures, openNowOnly, toggleFeature, toggleOpenNow } = useFilters();
 
   const chip = (active: boolean) => [
@@ -31,14 +33,14 @@ export function FilterBar() {
       contentContainerStyle={styles.content}
     >
       <Pressable onPress={toggleOpenNow} style={chip(openNowOnly)}>
-        <Text style={chipText(openNowOnly)}>🕐 Jetzt geöffnet</Text>
+        <Text style={chipText(openNowOnly)}>🕐 {t('common.openNow')}</Text>
       </Pressable>
       {SHOP_FEATURES.map((f) => {
         const active = activeFeatures.includes(f);
         return (
           <Pressable key={f} onPress={() => toggleFeature(f)} style={chip(active)}>
             <Text style={chipText(active)}>
-              {SHOP_FEATURE_ICONS[f]} {SHOP_FEATURE_LABELS[f]}
+              {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
             </Text>
           </Pressable>
         );

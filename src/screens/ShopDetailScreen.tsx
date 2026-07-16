@@ -30,6 +30,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
 import { formatLoadError } from '@/lib/errors';
+import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
@@ -38,7 +39,6 @@ import {
   HoursVoteSummary,
   PriceHistoryEntry,
   RATING_CATEGORIES,
-  RATING_CATEGORY_LABELS,
   Shop,
   ShopFeature,
   ShopFeatureSummary,
@@ -57,6 +57,8 @@ function barColor(value: number): string {
 
 export function ShopDetailScreen() {
   const { theme } = useTheme();
+  const { t, categoryLabel, lang } = useI18n();
+  const dateLocale = lang === 'tr' ? 'tr-TR' : lang === 'en' ? 'en-GB' : 'de-DE';
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'ShopDetail'>>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -90,7 +92,7 @@ export function ShopDetailScreen() {
         })
         .catch((e: Error) => {
           const msg = formatLoadError(e);
-          if (msg) Alert.alert('Fehler', msg);
+          if (msg) Alert.alert(t('common.error'), msg);
         });
       if (user) {
         fetchFavoriteIds(user.id)
@@ -111,7 +113,7 @@ export function ShopDetailScreen() {
       else await removeFavorite(user.id, shopId);
     } catch (e) {
       setIsFavorite(!next);
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     } finally {
       setFavoriteBusy(false);
     }
@@ -127,7 +129,7 @@ export function ShopDetailScreen() {
       setHoursVotes(await fetchHoursVoteSummary(shopId));
     } catch (e) {
       setMyHoursVote(previous);
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -170,15 +172,18 @@ export function ShopDetailScreen() {
           ) : null}
           <View style={styles.heroPill}>
             <Text style={[styles.heroPillText, { color: open ? '#B9F6CA' : '#FFCDD2' }]}>
-              ● {open ? 'Geöffnet' : 'Geschlossen'}
+              ● {open ? t('common.open') : t('common.closed')}
             </Text>
           </View>
         </View>
 
         {summary && summary.verifiziert_count > 0 ? (
           <Text style={styles.heroVerify}>
-            📍 {summary.verifiziert_count} von {summary.rating_count}{' '}
-            {summary.rating_count === 1 ? 'Bewertung' : 'Bewertungen'} vor Ort verifiziert
+            {t('detail.verifiedShare', {
+              v: summary.verifiziert_count,
+              n: summary.rating_count,
+              label: summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings'),
+            })}
           </Text>
         ) : null}
       </LinearGradient>
@@ -200,7 +205,7 @@ export function ShopDetailScreen() {
           ]}
         >
           <Text style={styles.actionIcon}>⭐</Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>Bewerten</Text>
+          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{t('detail.act.rate')}</Text>
         </Pressable>
         <Pressable
           onPress={() => setShowRouteModes((v) => !v)}
@@ -213,7 +218,7 @@ export function ShopDetailScreen() {
           ]}
         >
           <Text style={styles.actionIcon}>🧭</Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>Route</Text>
+          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{t('detail.act.route')}</Text>
         </Pressable>
         <Pressable
           onPress={toggleFavorite}
@@ -224,7 +229,7 @@ export function ShopDetailScreen() {
         >
           <Text style={styles.actionIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
           <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
-            {isFavorite ? 'Gemerkt' : 'Merken'}
+            {isFavorite ? t('detail.act.saved') : t('detail.act.save')}
           </Text>
         </Pressable>
       </View>
@@ -253,22 +258,24 @@ export function ShopDetailScreen() {
       {/* Preisverlauf */}
       {priceHistory.length >= 2 ? (
         <Text style={[styles.priceHistory, { color: theme.colors.textSecondary }]}>
-          📈 Preisverlauf: {priceHistory.map((p) => formatPrice(p.preis)).join(' → ')} (seit{' '}
-          {new Date(priceHistory[0].recorded_at).toLocaleDateString('de-DE', {
-            month: '2-digit',
-            year: 'numeric',
+          {t('detail.priceHistory', {
+            list: priceHistory.map((p) => formatPrice(p.preis)).join(' → '),
+            date: new Date(priceHistory[0].recorded_at).toLocaleDateString(dateLocale, {
+              month: '2-digit',
+              year: 'numeric',
+            }),
           })}
-          )
         </Text>
       ) : null}
 
       {shop.preis_bestaetigt_am ? (
         <Text style={[styles.priceHistory, { color: theme.colors.success }]}>
-          💶 Preis zuletzt bestätigt am{' '}
-          {new Date(shop.preis_bestaetigt_am).toLocaleDateString('de-DE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
+          {t('detail.priceConfirmedOn', {
+            date: new Date(shop.preis_bestaetigt_am).toLocaleDateString(dateLocale, {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            }),
           })}
         </Text>
       ) : null}
@@ -277,11 +284,12 @@ export function ShopDetailScreen() {
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <View style={styles.summaryHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Bewertung im Detail
+            {t('detail.ratingDetail')}
           </Text>
           {summary && summary.rating_count > 0 ? (
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {summary.rating_count} {summary.rating_count === 1 ? 'Bewertung' : 'Bewertungen'}
+              {summary.rating_count}{' '}
+              {summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings')}
             </Text>
           ) : null}
         </View>
@@ -291,7 +299,7 @@ export function ShopDetailScreen() {
             return (
               <View key={cat} style={styles.barRow}>
                 <Text style={[styles.barLabel, { color: theme.colors.text }]}>
-                  {RATING_CATEGORY_LABELS[cat]}
+                  {categoryLabel(cat)}
                 </Text>
                 <View style={[styles.barTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
                   <View
@@ -309,14 +317,14 @@ export function ShopDetailScreen() {
           })
         ) : (
           <Text style={{ color: theme.colors.textSecondary }}>
-            Noch keine Bewertungen – sei die/der Erste!
+            {t('detail.noRatingsBeFirst')}
           </Text>
         )}
       </View>
 
       {/* Besonderheiten */}
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Besonderheiten</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.features')}</Text>
         <FeatureBadges
           features={featureSummary.filter((f) => f.score > 0).map((f) => f.feature)}
           counts={Object.fromEntries(
@@ -324,22 +332,22 @@ export function ShopDetailScreen() {
           ) as Partial<Record<ShopFeature, number>>}
         />
         <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 10 }}>
-          Von der Community bestätigt – stimme bei deiner Bewertung mit ab.
+          {t('detail.featuresHint')}
         </Text>
       </View>
 
       {/* Öffnungszeiten */}
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Öffnungszeiten</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.hours')}</Text>
         {hoursVotes && hoursVotes.score <= -2 ? (
           <Text style={{ color: theme.colors.danger, fontSize: 13, marginBottom: 8 }}>
-            ⚠️ Laut Community sind diese Zeiten möglicherweise veraltet
+            {t('detail.hoursOutdated')}
           </Text>
         ) : null}
         <OpeningHoursTable hours={shop.opening_hours ?? {}} />
         <View style={[styles.hoursVoteRow, { borderTopColor: theme.colors.border }]}>
           <Text style={{ color: theme.colors.textSecondary, flex: 1, fontSize: 13 }}>
-            Stimmen die Zeiten?
+            {t('detail.hoursConfirm')}
           </Text>
           <Pressable
             onPress={() => voteHours(1)}
@@ -374,7 +382,7 @@ export function ShopDetailScreen() {
 
       <View style={styles.ctaWrap}>
         <Button
-          title="Jetzt bewerten"
+          title={t('detail.rateNow')}
           onPress={() =>
             navigation.navigate('RateShop', {
               shopId: shop.id,
@@ -391,7 +399,7 @@ export function ShopDetailScreen() {
         style={styles.reportLink}
       >
         <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
-          ✏️ Eintrag bearbeiten (Adresse, Zeiten, Preise)
+          {t('detail.edit')}
         </Text>
       </Pressable>
       <Pressable
@@ -401,7 +409,7 @@ export function ShopDetailScreen() {
         style={styles.reportLink}
       >
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
-          🚩 Fehler in diesem Eintrag melden
+          {t('detail.report')}
         </Text>
       </Pressable>
     </ScrollView>

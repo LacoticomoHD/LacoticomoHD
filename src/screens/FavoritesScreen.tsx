@@ -9,11 +9,13 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { ShopWithSummary } from '@/types';
 
 export function FavoritesScreen() {
   const { theme } = useTheme();
+  const { t } = useI18n();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
@@ -22,7 +24,7 @@ export function FavoritesScreen() {
     if (!user) return;
     fetchFavoriteShops(user.id)
       .then(setShops)
-      .catch((e: Error) => Alert.alert('Fehler', e.message));
+      .catch((e: Error) => Alert.alert(t('common.error'), e.message));
   }, [user]);
 
   useFocusEffect(load);
@@ -33,7 +35,7 @@ export function FavoritesScreen() {
       await removeFavorite(user.id, shopId);
       setShops((prev) => prev.filter((s) => s.id !== shopId));
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Entfernen fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -45,7 +47,7 @@ export function FavoritesScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            Noch keine Stammläden. Tippe bei einem Laden auf das 🤍, um ihn hier zu speichern.
+            {t('fav.empty')}
           </Text>
         }
         renderItem={({ item }) => {
@@ -71,7 +73,7 @@ export function FavoritesScreen() {
                       fontWeight: '700',
                     }}
                   >
-                    {open ? 'Geöffnet' : 'Geschlossen'}
+                    {open ? t('common.open') : t('common.closed')}
                   </Text>
                 </View>
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
@@ -87,7 +89,7 @@ export function FavoritesScreen() {
                     </>
                   ) : (
                     <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                      Noch keine Bewertung
+                      {t('common.noRating')}
                     </Text>
                   )}
                   {item.doener_preis != null ? (

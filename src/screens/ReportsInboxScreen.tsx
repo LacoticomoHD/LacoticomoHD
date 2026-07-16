@@ -5,12 +5,15 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { fetchAllReports, setReportStatus } from '@/lib/api';
 import type { RootStackParamList } from '@/navigation/types';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { REPORT_REASON_LABELS, ReportWithShop } from '@/types';
+import { ReportWithShop } from '@/types';
 
 /** Admin-Postfach: alle Nutzer-Meldungen, offene zuerst. Nur für app_admins sichtbar. */
 export function ReportsInboxScreen() {
   const { theme } = useTheme();
+  const { t, reportReasonLabel, lang } = useI18n();
+  const dateLocale = lang === 'tr' ? 'tr-TR' : lang === 'en' ? 'en-GB' : 'de-DE';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [reports, setReports] = useState<ReportWithShop[]>([]);
 
@@ -18,7 +21,7 @@ export function ReportsInboxScreen() {
     useCallback(() => {
       fetchAllReports()
         .then(setReports)
-        .catch((e: Error) => Alert.alert('Fehler', e.message));
+        .catch((e: Error) => Alert.alert(t('common.error'), e.message));
     }, [])
   );
 
@@ -30,7 +33,7 @@ export function ReportsInboxScreen() {
         prev.map((r) => (r.id === report.id ? { ...r, status: next } : r))
       );
     } catch (e) {
-      Alert.alert('Fehler', e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -39,7 +42,9 @@ export function ReportsInboxScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: theme.colors.background }]}>
       <Text style={[styles.counter, { color: theme.colors.textSecondary }]}>
-        {open === 0 ? 'Keine offenen Meldungen 🎉' : `${open} offene ${open === 1 ? 'Meldung' : 'Meldungen'}`}
+        {open === 0
+          ? t('inbox.noOpen')
+          : t('inbox.openCount', { n: open, label: open === 1 ? t('inbox.openWord') : t('inbox.openWords') })}
       </Text>
       <FlatList
         data={reports}
@@ -47,7 +52,7 @@ export function ReportsInboxScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            Bisher wurde nichts gemeldet.
+            {t('inbox.empty')}
           </Text>
         }
         renderItem={({ item }) => {
@@ -70,10 +75,10 @@ export function ReportsInboxScreen() {
                 style={styles.cardBody}
               >
                 <Text style={[styles.reason, { color: theme.colors.text }]}>
-                  🚩 {REPORT_REASON_LABELS[item.reason]}
+                  🚩 {reportReasonLabel(item.reason)}
                 </Text>
                 <Text style={{ color: theme.colors.text, fontSize: 14 }} numberOfLines={1}>
-                  {item.shops?.name ?? 'Gelöschter Laden'}
+                  {item.shops?.name ?? t('inbox.deletedShop')}
                 </Text>
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
                   {item.shops?.address ?? ''}
@@ -84,7 +89,7 @@ export function ReportsInboxScreen() {
                   </Text>
                 ) : null}
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 4 }}>
-                  {new Date(item.created_at).toLocaleDateString('de-DE', {
+                  {new Date(item.created_at).toLocaleDateString(dateLocale, {
                     day: '2-digit',
                     month: '2-digit',
                     year: 'numeric',
@@ -107,7 +112,7 @@ export function ReportsInboxScreen() {
                     fontWeight: '700',
                   }}
                 >
-                  {done ? '↩︎ Wieder öffnen' : '✓ Erledigt'}
+                  {done ? t('inbox.reopen') : t('inbox.done')}
                 </Text>
               </Pressable>
             </View>

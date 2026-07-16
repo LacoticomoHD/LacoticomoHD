@@ -8,6 +8,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
+import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
@@ -43,6 +44,7 @@ export function MapScreen() {
   const mapReadyRef = useRef(false);
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const { matchesFilters } = useFilters();
+  const { t } = useI18n();
 
   const loadVisibleShops = useCallback(async () => {
     const map = mapRef.current;
@@ -62,7 +64,7 @@ export function MapScreen() {
       setShops(await fetchShopsInBounds(bounds));
     } catch (e) {
       const msg = formatLoadError(e);
-      if (msg) Alert.alert('Fehler beim Laden', msg);
+      if (msg) Alert.alert(t('common.loadError'), msg);
     }
   }, []);
 
@@ -171,7 +173,7 @@ export function MapScreen() {
           zoom: 14,
         }),
       () =>
-        Alert.alert('Standort', 'Ohne Standortfreigabe kann die Karte nicht zentriert werden.')
+        Alert.alert(t('map.locationTitle'), t('map.locationDenied'))
     );
   };
 
