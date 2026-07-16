@@ -109,6 +109,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'rate.featuresTitle': 'Besonderheiten (optional)',
     'rate.featuresHint':
       'Was bietet dieser Laden wirklich an? Tippen wechselt: einmal = ✓ vorhanden, zweimal = ✗ nicht vorhanden, dreimal = keine Angabe. Angezeigt wird eine Besonderheit erst, wenn die Community sie mehrheitlich bestätigt.',
+    'rate.cardTitle': '💳 Kartenzahlung (optional)',
+    'rate.cardHint': 'Kann man hier mit Karte zahlen? Deine Angabe hilft allen anderen.',
     'rate.priceCheck': '💶 Preis-Check (optional)',
     'rate.priceStillQ': 'Kostet der Döner hier noch {price}?',
     'rate.priceStillYes': '✓ Stimmt noch',
@@ -339,6 +341,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'rate.featuresTitle': 'Features (optional)',
     'rate.featuresHint':
       'What does this shop really offer? Tap to cycle: once = ✓ available, twice = ✗ not available, three times = no answer. A feature is only shown once the community confirms it by majority.',
+    'rate.cardTitle': '💳 Card payment (optional)',
+    'rate.cardHint': 'Can you pay by card here? Your input helps everyone else.',
     'rate.priceCheck': '💶 Price check (optional)',
     'rate.priceStillQ': 'Does the kebab here still cost {price}?',
     'rate.priceStillYes': '✓ Still correct',
@@ -561,6 +565,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'rate.featuresTitle': 'Özellikler (isteğe bağlı)',
     'rate.featuresHint':
       'Bu dükkan gerçekte ne sunuyor? Dokunarak değiştir: bir kez = ✓ var, iki kez = ✗ yok, üç kez = bilgi yok. Bir özellik ancak topluluk çoğunlukla onayladığında gösterilir.',
+    'rate.cardTitle': '💳 Kartla ödeme (isteğe bağlı)',
+    'rate.cardHint': 'Burada kartla ödeme yapılabiliyor mu? Belirtmen herkese yardımcı olur.',
     'rate.priceCheck': '💶 Fiyat kontrolü (isteğe bağlı)',
     'rate.priceStillQ': 'Buradaki döner hâlâ {price} mı?',
     'rate.priceStillYes': '✓ Hâlâ doğru',

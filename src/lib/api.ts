@@ -414,6 +414,15 @@ export async function updateDoenerPreis(shopId: string, preis: number) {
   if (error) throw new Error(error.message);
 }
 
+/** Setzt die Kartenzahlungs-Angabe (true = möglich, false = nur Bar, null = keine Angabe). */
+export async function updateKartenzahlung(shopId: string, kartenzahlung: boolean | null) {
+  const { error } = await supabase
+    .from('shops')
+    .update({ kartenzahlung })
+    .eq('id', shopId);
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------------------
 // Dönerpreis-Historie
 // ---------------------------------------------------------------------------

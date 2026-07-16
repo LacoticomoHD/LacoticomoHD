@@ -14,6 +14,7 @@ import {
   RatingInput,
   saveFeatureVotes,
   updateDoenerPreis,
+  updateKartenzahlung,
   upsertRating,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
@@ -58,10 +59,17 @@ export function RateShopScreen() {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceAnswer, setPriceAnswer] = useState<'stimmt' | 'anders' | null>(null);
   const [newPriceText, setNewPriceText] = useState('');
+  // Kartenzahlung: true = möglich, false = nur Bar, null = keine Angabe.
+  const [cardPayment, setCardPayment] = useState<boolean | null>(null);
+  const [originalCard, setOriginalCard] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchShop(shopId)
-      .then((shop) => setCurrentPrice(shop.doener_preis))
+      .then((shop) => {
+        setCurrentPrice(shop.doener_preis);
+        setCardPayment(shop.kartenzahlung ?? null);
+        setOriginalCard(shop.kartenzahlung ?? null);
+      })
       .catch(() => {});
   }, [shopId]);
 
@@ -140,6 +148,10 @@ export function RateShopScreen() {
       try {
         if (priceUpdate != null) await updateDoenerPreis(shopId, priceUpdate);
         else if (priceAnswer === 'stimmt' && currentPrice != null) await confirmPrice(shopId);
+      } catch {}
+      // Kartenzahlung nur schreiben, wenn geändert (jede:r darf sie aktualisieren).
+      try {
+        if (cardPayment !== originalCard) await updateKartenzahlung(shopId, cardPayment);
       } catch {}
       Alert.alert(
         t('rate.thanks'),
@@ -225,6 +237,47 @@ export function RateShopScreen() {
               <Text style={{ color: textColor, fontSize: 14 }}>
                 {vote === 1 ? '✓ ' : vote === -1 ? '✗ ' : ''}
                 {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Kartenzahlung */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        {t('rate.cardTitle')}
+      </Text>
+      <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
+        {t('rate.cardHint')}
+      </Text>
+      <View style={styles.priceRow}>
+        {([
+          { value: true as boolean | null, label: t('form.cardYes') },
+          { value: false as boolean | null, label: t('form.cardNo') },
+          { value: null as boolean | null, label: t('form.cardUnknown') },
+        ]).map((opt) => {
+          const active = cardPayment === opt.value;
+          return (
+            <Pressable
+              key={String(opt.value)}
+              onPress={() => setCardPayment(opt.value)}
+              style={[
+                styles.cardChip,
+                {
+                  backgroundColor: active ? theme.colors.primary : theme.colors.surface,
+                  borderColor: active ? theme.colors.primary : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: active ? theme.colors.onPrimary : theme.colors.text,
+                  fontWeight: '600',
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
+                {opt.label}
               </Text>
             </Pressable>
           );
@@ -320,6 +373,15 @@ export function RateShopScreen() {
 }
 
 const styles = StyleSheet.create({
+  cardChip: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 11,
+  },
   content: { padding: 20, paddingBottom: 40 },
   featureChip: {
     borderRadius: 18,
