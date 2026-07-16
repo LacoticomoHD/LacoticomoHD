@@ -54,6 +54,9 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Map
     'map.search': 'Laden oder Stadt suchen …',
+    'map.searchPlaceholder': 'Stadt oder Ort suchen, z. B. Frankfurt',
+    'map.searchTitle': 'Ortssuche',
+    'map.searchNotFound': 'Ort nicht gefunden. Bitte anders schreiben.',
     'map.locationTitle': 'Standort',
     'map.locationDenied': 'Ohne Standortfreigabe kann die Karte nicht zentriert werden.',
 
@@ -94,6 +97,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.route': 'Route',
     'detail.act.save': 'Merken',
     'detail.act.saved': 'Gemerkt',
+    'detail.cardYes': 'Karte möglich',
+    'detail.cardNo': 'Nur Bar',
 
     // Rate
     'rate.introNew': 'Vergib 1 bis 5 Sterne pro Kategorie.',
@@ -126,6 +131,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'form.namePlaceholder': 'z. B. Dönerbude Ali',
     'form.doenerPrice': '🥙 Döner in € (optional)',
     'form.dueruemPrice': '🌯 Dürüm/Yufka in € (optional)',
+    'form.cardPayment': '💳 Kartenzahlung möglich?',
+    'form.cardYes': 'Ja',
+    'form.cardNo': 'Nur Bar',
+    'form.cardUnknown': 'Keine Angabe',
     'form.address': 'Adresse',
     'form.addressPlaceholder': 'Straße Hausnummer, Stadt',
     'form.searchAddress': 'Adresse suchen',
@@ -281,6 +290,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.noRating': 'No rating yet',
 
     'map.search': 'Search shop or city …',
+    'map.searchPlaceholder': 'Search a city or place, e.g. Frankfurt',
+    'map.searchTitle': 'Place search',
+    'map.searchNotFound': 'Place not found. Please try a different spelling.',
     'map.locationTitle': 'Location',
     'map.locationDenied': 'Without location access the map cannot be centered.',
 
@@ -316,6 +328,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.route': 'Route',
     'detail.act.save': 'Save',
     'detail.act.saved': 'Saved',
+    'detail.cardYes': 'Card accepted',
+    'detail.cardNo': 'Cash only',
 
     'rate.introNew': 'Give 1 to 5 stars per category.',
     'rate.introEdit': "You've already rated this shop – you can adjust your entries.",
@@ -346,6 +360,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'form.namePlaceholder': 'e.g. Kebab House Ali',
     'form.doenerPrice': '🥙 Kebab in € (optional)',
     'form.dueruemPrice': '🌯 Dürüm/wrap in € (optional)',
+    'form.cardPayment': '💳 Card payment accepted?',
+    'form.cardYes': 'Yes',
+    'form.cardNo': 'Cash only',
+    'form.cardUnknown': 'Not specified',
     'form.address': 'Address',
     'form.addressPlaceholder': 'Street number, city',
     'form.searchAddress': 'Search address',
@@ -494,6 +512,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.noRating': 'Henüz değerlendirme yok',
 
     'map.search': 'Dükkan veya şehir ara …',
+    'map.searchPlaceholder': 'Şehir veya yer ara, örn. Frankfurt',
+    'map.searchTitle': 'Yer arama',
+    'map.searchNotFound': 'Yer bulunamadı. Lütfen farklı yazın.',
     'map.locationTitle': 'Konum',
     'map.locationDenied': 'Konum izni olmadan harita ortalanamaz.',
 
@@ -529,6 +550,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.route': 'Yol tarifi',
     'detail.act.save': 'Kaydet',
     'detail.act.saved': 'Kaydedildi',
+    'detail.cardYes': 'Kart geçerli',
+    'detail.cardNo': 'Sadece nakit',
 
     'rate.introNew': 'Her kategori için 1 ila 5 yıldız ver.',
     'rate.introEdit': 'Bu dükkanı zaten değerlendirdin – bilgilerini güncelleyebilirsin.',
@@ -559,6 +582,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'form.namePlaceholder': 'örn. Dönerci Ali',
     'form.doenerPrice': '🥙 Döner € (isteğe bağlı)',
     'form.dueruemPrice': '🌯 Dürüm/Yufka € (isteğe bağlı)',
+    'form.cardPayment': '💳 Kartla ödeme mümkün mü?',
+    'form.cardYes': 'Evet',
+    'form.cardNo': 'Sadece nakit',
+    'form.cardUnknown': 'Belirtilmemiş',
     'form.address': 'Adres',
     'form.addressPlaceholder': 'Sokak numarası, şehir',
     'form.searchAddress': 'Adres ara',

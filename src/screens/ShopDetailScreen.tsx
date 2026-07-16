@@ -175,6 +175,13 @@ export function ShopDetailScreen() {
               ● {open ? t('common.open') : t('common.closed')}
             </Text>
           </View>
+          {shop.kartenzahlung != null ? (
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillText}>
+                {shop.kartenzahlung ? `💳 ${t('detail.cardYes')}` : `💵 ${t('detail.cardNo')}`}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {summary && summary.verifiziert_count > 0 ? (

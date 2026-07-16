@@ -23,6 +23,8 @@ create table public.shops (
   preis_bestaetigt_am timestamptz,
   -- Stadt (für Bestenliste und Dönerpreis-Index)
   city          text,
+  -- Kartenzahlung möglich? true = ja, false = nur Bar, null = keine Angabe
+  kartenzahlung boolean,
   -- Bei Kontolöschung bleiben Läden als Community-Daten erhalten (created_by wird null).
   created_by    uuid references auth.users (id) on delete set null,
   created_at    timestamptz not null default now(),

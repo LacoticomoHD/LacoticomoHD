@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v8), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v9), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -13,6 +13,7 @@ alter table public.shops   add column if not exists doener_preis  numeric(5, 2);
 alter table public.shops   add column if not exists dueruem_preis numeric(5, 2);
 alter table public.shops   add column if not exists city          text;
 alter table public.shops   add column if not exists preis_bestaetigt_am timestamptz;
+alter table public.shops   add column if not exists kartenzahlung boolean;
 alter table public.ratings add column if not exists verified      boolean not null default false;
 alter table public.reports add column if not exists status        text not null default 'offen';
 

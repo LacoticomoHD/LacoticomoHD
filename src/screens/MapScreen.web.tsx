@@ -3,13 +3,21 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
 import { useI18n } from '@/i18n/I18nContext';
-import { fetchShopsInBounds } from '@/lib/api';
+import { fetchShopsInBounds, geocodeAddress } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
@@ -45,6 +53,8 @@ export function MapScreen() {
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const { matchesFilters } = useFilters();
   const { t } = useI18n();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
 
   const loadVisibleShops = useCallback(async () => {
     const map = mapRef.current;
@@ -165,6 +175,26 @@ export function MapScreen() {
     }, [loadVisibleShops])
   );
 
+  // Ortssuche: Eingabe (z. B. „Frankfurt") geokodieren und die Karte dorthin fliegen.
+  const runSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query || searching) return;
+    setSearching(true);
+    try {
+      const results = await geocodeAddress(query);
+      if (results.length === 0) {
+        Alert.alert(t('map.searchTitle'), t('map.searchNotFound'));
+        return;
+      }
+      const { latitude, longitude } = results[0];
+      mapRef.current?.flyTo({ center: [longitude, latitude], zoom: 13 });
+    } catch (e) {
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const goToMyLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) =>
@@ -181,7 +211,31 @@ export function MapScreen() {
     <View style={styles.flex}>
       <View ref={containerRef} style={styles.flex} />
 
-      <View style={styles.filterOverlay}>
+      <View style={styles.topOverlay}>
+        <View
+          style={[
+            styles.searchBox,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={{ fontSize: 15 }}>🔍</Text>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={runSearch}
+            placeholder={t('map.searchPlaceholder')}
+            placeholderTextColor={theme.colors.textSecondary}
+            returnKeyType="search"
+            style={[styles.searchInput, { color: theme.colors.text }]}
+          />
+          {searching ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : searchQuery.length > 0 ? (
+            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 16 }}>✕</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <FilterBar />
       </View>
 
@@ -217,7 +271,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     width: 56,
   },
-  filterOverlay: { left: 0, position: 'absolute', right: 0, top: 4 },
   flex: { flex: 1 },
   locateFab: { bottom: 92, right: 16 },
+  searchBox: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    elevation: 3,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 6,
+    marginHorizontal: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  searchInput: { flex: 1, fontSize: 15, padding: 0 },
+  topOverlay: { left: 0, position: 'absolute', right: 0, top: 8 },
 });

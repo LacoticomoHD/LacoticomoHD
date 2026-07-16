@@ -64,6 +64,8 @@ export function ShopFormScreen() {
   const [name, setName] = useState('');
   const [priceText, setPriceText] = useState('');
   const [dueruemText, setDueruemText] = useState('');
+  // Kartenzahlung: true = möglich, false = nur Bar, null = keine Angabe.
+  const [kartenzahlung, setKartenzahlung] = useState<boolean | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Damit Eingabefelder (v. a. die unteren Öffnungszeiten) nicht hinter der
@@ -98,6 +100,7 @@ export function ShopFormScreen() {
         setDueruemText(
           shop.dueruem_preis != null ? shop.dueruem_preis.toFixed(2).replace('.', ',') : ''
         );
+        setKartenzahlung(shop.kartenzahlung ?? null);
         setAddressQuery(shop.address);
         setSelected({
           displayName: shop.address,
@@ -212,6 +215,7 @@ export function ShopFormScreen() {
       doener_preis: price.value,
       dueruem_preis: dueruemPrice.value,
       city: selected.city,
+      kartenzahlung,
     };
 
     // Duplikat-Schutz: gibt es im Umkreis von 150 m schon einen ähnlich benannten Laden?
@@ -285,6 +289,43 @@ export function ShopFormScreen() {
             keyboardType="decimal-pad"
           />
         </View>
+      </View>
+
+      <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
+        {t('form.cardPayment')}
+      </Text>
+      <View style={styles.cardPayRow}>
+        {([
+          { value: true as boolean | null, label: t('form.cardYes') },
+          { value: false as boolean | null, label: t('form.cardNo') },
+          { value: null as boolean | null, label: t('form.cardUnknown') },
+        ]).map((opt) => {
+          const active = kartenzahlung === opt.value;
+          return (
+            <Pressable
+              key={String(opt.value)}
+              onPress={() => setKartenzahlung(opt.value)}
+              style={[
+                styles.cardPayOption,
+                {
+                  backgroundColor: active ? theme.colors.surfaceVariant : theme.colors.surface,
+                  borderColor: active ? theme.colors.primary : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: active ? theme.colors.primary : theme.colors.text,
+                  fontSize: 13,
+                  fontWeight: active ? '700' : '500',
+                  textAlign: 'center',
+                }}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <TextField
@@ -386,8 +427,18 @@ export function ShopFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  cardPayOption: {
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 12,
+  },
+  cardPayRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   closedSwitch: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 8 },
   content: { padding: 20, paddingBottom: 48 },
   dayHeader: {
     alignItems: 'center',

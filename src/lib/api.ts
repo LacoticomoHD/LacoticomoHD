@@ -306,6 +306,7 @@ export interface NewShopInput {
   doener_preis: number | null;
   dueruem_preis: number | null;
   city: string | null;
+  kartenzahlung: boolean | null;
 }
 
 export async function createShop(input: NewShopInput, userId: string): Promise<Shop> {

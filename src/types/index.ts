@@ -124,6 +124,8 @@ export interface Shop {
   preis_bestaetigt_am: string | null;
   /** Stadt (für Bestenliste und Dönerpreis-Index). */
   city: string | null;
+  /** Kartenzahlung möglich? true = ja, false = nur Bar, null = keine Angabe. */
+  kartenzahlung: boolean | null;
   created_by: string | null;
   created_at: string;
 }
