@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
 import { formatLoadError } from '@/lib/errors';
+import { tapLight, tapMedium, tapSelection } from '@/lib/haptics';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
 import { isOpenNow } from '@/lib/openingHours';
@@ -55,6 +57,46 @@ function barColor(value: number): string {
   return '#C62828';
 }
 
+/** Bewertungsbalken, der beim Öffnen sanft von 0 auf seinen Wert wächst. */
+function RatingBar({
+  value,
+  label,
+  trackColor,
+  textColor,
+  delay,
+}: {
+  value: number;
+  label: string;
+  trackColor: string;
+  textColor: string;
+  delay: number;
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.timing(progress, {
+      toValue: 1,
+      duration: 700,
+      delay,
+      useNativeDriver: false,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [value, delay, progress]);
+  const width = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', `${(value / 5) * 100}%`],
+  });
+  return (
+    <View style={styles.barRow}>
+      <Text style={[styles.barLabel, { color: textColor }]}>{label}</Text>
+      <View style={[styles.barTrack, { backgroundColor: trackColor }]}>
+        <Animated.View style={[styles.barFill, { width, backgroundColor: barColor(value) }]} />
+      </View>
+      <Text style={[styles.barValue, { color: textColor }]}>{value.toFixed(1)}</Text>
+    </View>
+  );
+}
+
 export function ShopDetailScreen() {
   const { theme } = useTheme();
   const { t, categoryLabel, lang } = useI18n();
@@ -73,6 +115,7 @@ export function ShopDetailScreen() {
   const [hoursVotes, setHoursVotes] = useState<HoursVoteSummary | null>(null);
   const [myHoursVote, setMyHoursVote] = useState<1 | -1 | 0>(0);
   const [showRouteModes, setShowRouteModes] = useState(false);
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -108,6 +151,12 @@ export function ShopDetailScreen() {
     setFavoriteBusy(true);
     const next = !isFavorite;
     setIsFavorite(next);
+    tapSelection();
+    // Herz kurz aufpoppen lassen.
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.45, useNativeDriver: true, speed: 50, bounciness: 14 }),
+      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 10 }),
+    ]).start();
     try {
       if (next) await addFavorite(user.id, shopId);
       else await removeFavorite(user.id, shopId);
@@ -198,14 +247,15 @@ export function ShopDetailScreen() {
       {/* Aktions-Leiste */}
       <View style={styles.actionRow}>
         <Pressable
-          onPress={() =>
+          onPress={() => {
+            tapMedium();
             navigation.navigate('RateShop', {
               shopId: shop.id,
               shopName: shop.name,
               latitude: shop.latitude,
               longitude: shop.longitude,
-            })
-          }
+            });
+          }}
           style={[
             styles.action,
             { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
@@ -215,7 +265,10 @@ export function ShopDetailScreen() {
           <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{t('detail.act.rate')}</Text>
         </Pressable>
         <Pressable
-          onPress={() => setShowRouteModes((v) => !v)}
+          onPress={() => {
+            tapLight();
+            setShowRouteModes((v) => !v);
+          }}
           style={[
             styles.action,
             {
@@ -234,7 +287,9 @@ export function ShopDetailScreen() {
             { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
           ]}
         >
-          <Text style={styles.actionIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+          <Animated.Text style={[styles.actionIcon, { transform: [{ scale: heartScale }] }]}>
+            {isFavorite ? '❤️' : '🤍'}
+          </Animated.Text>
           <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
             {isFavorite ? t('detail.act.saved') : t('detail.act.save')}
           </Text>
@@ -301,27 +356,16 @@ export function ShopDetailScreen() {
           ) : null}
         </View>
         {summary && summary.rating_count > 0 ? (
-          RATING_CATEGORIES.map((cat) => {
-            const value = summary[`avg_${cat}`] ?? 0;
-            return (
-              <View key={cat} style={styles.barRow}>
-                <Text style={[styles.barLabel, { color: theme.colors.text }]}>
-                  {categoryLabel(cat)}
-                </Text>
-                <View style={[styles.barTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { width: `${(value / 5) * 100}%`, backgroundColor: barColor(value) },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.barValue, { color: theme.colors.text }]}>
-                  {value.toFixed(1)}
-                </Text>
-              </View>
-            );
-          })
+          RATING_CATEGORIES.map((cat, i) => (
+            <RatingBar
+              key={cat}
+              value={summary[`avg_${cat}`] ?? 0}
+              label={categoryLabel(cat)}
+              trackColor={theme.colors.surfaceVariant}
+              textColor={theme.colors.text}
+              delay={i * 90}
+            />
+          ))
         ) : (
           <Text style={{ color: theme.colors.textSecondary }}>
             {t('detail.noRatingsBeFirst')}

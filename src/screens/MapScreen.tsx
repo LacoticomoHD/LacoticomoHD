@@ -25,6 +25,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds, geocodeAddress } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
+import { tapLight, tapMedium } from '@/lib/haptics';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
@@ -180,6 +181,7 @@ export function MapScreen() {
         return;
       }
       const { latitude, longitude } = results[0];
+      tapMedium();
       setCameraJump((prev) => ({
         centerCoordinate: [longitude, latitude],
         zoomLevel: 13,
@@ -284,15 +286,25 @@ export function MapScreen() {
       </View>
 
       <Pressable
+        onPressIn={tapLight}
         onPress={goToMyLocation}
-        style={[styles.fab, styles.locateFab, { backgroundColor: theme.colors.surface }]}
+        style={({ pressed }) => [
+          styles.fab,
+          styles.locateFab,
+          { backgroundColor: theme.colors.surface, transform: [{ scale: pressed ? 0.92 : 1 }] },
+        ]}
       >
         <Text style={{ fontSize: 22 }}>📍</Text>
       </Pressable>
 
       <Pressable
+        onPressIn={tapMedium}
         onPress={() => navigation.navigate('AddShop')}
-        style={[styles.fab, styles.addFab, { backgroundColor: theme.colors.primary }]}
+        style={({ pressed }) => [
+          styles.fab,
+          styles.addFab,
+          { backgroundColor: theme.colors.primary, transform: [{ scale: pressed ? 0.92 : 1 }] },
+        ]}
       >
         <Text style={{ color: theme.colors.onPrimary, fontSize: 30, lineHeight: 34 }}>＋</Text>
       </Pressable>

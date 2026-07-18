@@ -5,6 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
+import { PressableScale } from '@/components/PressableScale';
 import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
 import { useI18n } from '@/i18n/I18nContext';
@@ -175,7 +176,7 @@ export function ShopListScreen() {
             ? distanceKm(position.latitude, position.longitude, item.latitude, item.longitude)
             : null;
           return (
-            <Pressable
+            <PressableScale
               onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
               style={[
                 styles.card,
@@ -235,7 +236,7 @@ export function ShopListScreen() {
                   ) : null}
                 </View>
               )}
-            </Pressable>
+            </PressableScale>
           );
         }}
       />
@@ -247,8 +248,13 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     borderWidth: 1,
+    elevation: 2,
     marginBottom: 10,
     padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
   },
   cardFooter: {
     alignItems: 'center',

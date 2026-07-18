@@ -1,6 +1,7 @@
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import React, { useRef } from 'react';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, Text } from 'react-native';
 
+import { tapMedium } from '@/lib/haptics';
 import { useTheme } from '@/theme/ThemeContext';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 
 export function Button({ title, onPress, variant = 'primary', loading, disabled }: Props) {
   const { theme } = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
   const background =
     variant === 'primary'
       ? theme.colors.primary
@@ -21,19 +23,38 @@ export function Button({ title, onPress, variant = 'primary', loading, disabled 
         : theme.colors.surfaceVariant;
   const textColor = variant === 'secondary' ? theme.colors.text : theme.colors.onPrimary;
 
+  const animateTo = (to: number) =>
+    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={() => {
+        if (!(disabled || loading)) tapMedium();
+        animateTo(0.97);
+      }}
+      onPressOut={() => animateTo(1)}
       disabled={disabled || loading}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: background, opacity: disabled || pressed ? 0.7 : 1 },
-      ]}
     >
-      {loading ? (
-        <ActivityIndicator color={textColor} />
-      ) : (
-        <Text style={[styles.label, { color: textColor }]}>{title}</Text>
+      {({ pressed }) => (
+        <Animated.View
+          style={[
+            styles.button,
+            variant === 'primary' ? styles.shadow : null,
+            {
+              backgroundColor: background,
+              opacity: disabled || pressed ? 0.85 : 1,
+              transform: [{ scale }],
+              shadowColor: theme.colors.primary,
+            },
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator color={textColor} />
+          ) : (
+            <Text style={[styles.label, { color: textColor }]}>{title}</Text>
+          )}
+        </Animated.View>
       )}
     </Pressable>
   );
@@ -49,4 +70,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   label: { fontSize: 16, fontWeight: '600' },
+  shadow: {
+    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+  },
 });

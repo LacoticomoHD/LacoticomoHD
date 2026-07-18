@@ -18,6 +18,7 @@ import {
   upsertRating,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { tapLight, tapSuccess } from '@/lib/haptics';
 import { useI18n } from '@/i18n/I18nContext';
 import { distanceKm, formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
@@ -99,12 +100,14 @@ export function RateShopScreen() {
     setValues((prev) => ({ ...prev, [cat]: value }));
 
   /** Tippen wechselt: keine Angabe → ✓ vorhanden → ✗ nicht vorhanden → keine Angabe */
-  const cycleVote = (feature: ShopFeature) =>
+  const cycleVote = (feature: ShopFeature) => {
+    tapLight();
     setVotes((prev) => {
       const current = prev[feature] ?? 0;
       const next = current === 0 ? 1 : current === 1 ? -1 : 0;
       return { ...prev, [feature]: next };
     });
+  };
 
   /** Vor-Ort-Check: Ist der Nutzer gerade in Ladennähe (< 150 m)?
    *  Es wird nur ja/nein gespeichert, nie der Standort selbst. */
@@ -153,6 +156,7 @@ export function RateShopScreen() {
       try {
         if (cardPayment !== originalCard) await updateKartenzahlung(shopId, cardPayment);
       } catch {}
+      tapSuccess();
       Alert.alert(
         t('rate.thanks'),
         (existing ? t('rate.savedEdit') : t('rate.savedNew')) +
@@ -260,7 +264,10 @@ export function RateShopScreen() {
           return (
             <Pressable
               key={String(opt.value)}
-              onPress={() => setCardPayment(opt.value)}
+              onPress={() => {
+                tapLight();
+                setCardPayment(opt.value);
+              }}
               style={[
                 styles.cardChip,
                 {
