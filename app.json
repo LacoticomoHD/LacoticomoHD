@@ -27,7 +27,7 @@
       "package": "de.dondoener.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#C0392B"
+        "backgroundColor": "#130D0A"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -42,9 +42,9 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
           "resizeMode": "contain",
-          "backgroundColor": "#FAF7F2",
+          "backgroundColor": "#130D0A",
           "dark": {
-            "backgroundColor": "#17130F"
+            "backgroundColor": "#130D0A"
           }
         }
       ],
