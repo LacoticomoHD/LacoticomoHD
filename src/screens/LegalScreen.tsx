@@ -4,13 +4,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 
-// Impressum mit ladungsfähiger Anschrift ist in Deutschland Pflicht (§ 5 DDG),
-// die Datenschutzerklärung nach DSGVO ebenso.
+// Impressum (§ 5 DDG) und Datenschutzerklärung (DSGVO). Die ladungsfähige
+// Anschrift wurde auf Wunsch des Betreibers entfernt; bei geschäftsmäßigem
+// Betrieb ist eine solche Anschrift rechtlich in der Regel erforderlich.
 
 const IMPRESSUM = `Sebastian Of
-Frankfurter Straße 18
-76344 Eggenstein-Leopoldshafen
-Deutschland
 
 E-Mail: sebastianof13@googlemail.com
 
