@@ -1,5 +1,6 @@
 // Browser-Version der Karte (PWA): MapLibre GL JS statt der nativen Bibliothek.
 // Metro wählt diese Datei automatisch für Web-Builds (Endung .web.tsx).
+import { Asset } from 'expo-asset';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +28,10 @@ import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
 
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
+
+// Karten-Marker (Döner-Pin): grün = geöffnet, grau = geschlossen.
+const PIN_OPEN_URI = Asset.fromModule(require('../../assets/markers/pin-open.png')).uri;
+const PIN_CLOSED_URI = Asset.fromModule(require('../../assets/markers/pin-closed.png')).uri;
 
 const MAP_STYLE_URL = process.env.EXPO_PUBLIC_MAP_STYLE_URL;
 const OSM_TILE_URL =
@@ -91,31 +96,46 @@ export function MapScreen() {
     });
     mapRef.current = map;
 
-    map.on('load', () => {
+    const loadMarker = (name: string, url: string) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          if (!map.hasImage(name)) map.addImage(name, img);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = url;
+      });
+
+    map.on('load', async () => {
+      await Promise.all([
+        loadMarker('pin-open', PIN_OPEN_URI),
+        loadMarker('pin-closed', PIN_CLOSED_URI),
+      ]);
       map.addSource('shops', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       });
       map.addLayer({
-        id: 'shop-circles',
-        type: 'circle',
+        id: 'shop-markers',
+        type: 'symbol',
         source: 'shops',
-        paint: {
-          'circle-radius': 9,
-          'circle-color': '#C0392B',
-          'circle-stroke-width': 3,
-          'circle-stroke-color': ['case', ['get', 'open'], '#2E7D32', '#C62828'],
-          'circle-opacity': 0.95,
+        layout: {
+          'icon-image': ['case', ['get', 'open'], 'pin-open', 'pin-closed'],
+          'icon-size': 0.16,
+          'icon-anchor': 'bottom',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       });
-      map.on('click', 'shop-circles', (e) => {
+      map.on('click', 'shop-markers', (e) => {
         const shopId = e.features?.[0]?.properties?.id as string | undefined;
         if (shopId) navigation.navigate('ShopDetail', { shopId });
       });
-      map.on('mouseenter', 'shop-circles', () => {
+      map.on('mouseenter', 'shop-markers', () => {
         map.getCanvas().style.cursor = 'pointer';
       });
-      map.on('mouseleave', 'shop-circles', () => {
+      map.on('mouseleave', 'shop-markers', () => {
         map.getCanvas().style.cursor = '';
       });
       mapReadyRef.current = true;

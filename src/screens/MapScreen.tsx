@@ -1,8 +1,9 @@
 import {
   Camera,
-  CircleLayer,
+  Images,
   MapView,
   ShapeSource,
+  SymbolLayer,
   UserLocation,
   type MapViewRef,
   type OnPressEvent,
@@ -35,6 +36,12 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 // Start: Karlsruhe – hier begann die Community. [Längengrad, Breitengrad]
 // Wird beim Start durch den eigenen Standort ersetzt, sobald die Freigabe da ist.
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
+
+// Karten-Marker (Döner-Pin): grün = geöffnet, grau = geschlossen.
+const MARKER_IMAGES = {
+  'pin-open': require('../../assets/markers/pin-open.png'),
+  'pin-closed': require('../../assets/markers/pin-closed.png'),
+};
 
 /** Kamera-Sprünge laufen ausschließlich über defaultSettings + key-Remount:
  *  Der imperative setCamera-Befehl bleibt auf der neuen RN-Architektur als
@@ -230,20 +237,16 @@ export function MapScreen() {
         {/* Immer eingehängt (nur Sichtbarkeit wechselt): Ein-/Aushängen von
             Karten-Kindern löste auf Android den Kamera-Reset beim Zoomen aus. */}
         <UserLocation visible={hasLocationPermission} />
-        <ShapeSource id="shops" shape={shopFeatures} onPress={onShopPress} hitbox={{ width: 24, height: 24 }}>
-          <CircleLayer
-            id="shop-circles"
+        <Images images={MARKER_IMAGES} />
+        <ShapeSource id="shops" shape={shopFeatures} onPress={onShopPress} hitbox={{ width: 40, height: 52 }}>
+          <SymbolLayer
+            id="shop-markers"
             style={{
-              circleRadius: 9,
-              circleColor: theme.colors.primary,
-              circleStrokeWidth: 3,
-              circleStrokeColor: [
-                'case',
-                ['get', 'open'],
-                theme.colors.success,
-                theme.colors.danger,
-              ],
-              circleOpacity: 0.95,
+              iconImage: ['case', ['get', 'open'], 'pin-open', 'pin-closed'],
+              iconSize: 0.16,
+              iconAnchor: 'bottom',
+              iconAllowOverlap: true,
+              iconIgnorePlacement: true,
             }}
           />
         </ShapeSource>
