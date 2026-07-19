@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   barFill: { borderRadius: 4, height: '100%' },
-  barLabel: { fontSize: 13, width: 104 },
+  barLabel: { fontSize: 12.5, width: 116 },
   barRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 5 },
   barTrack: { borderRadius: 4, flex: 1, height: 8, overflow: 'hidden' },
   barValue: {

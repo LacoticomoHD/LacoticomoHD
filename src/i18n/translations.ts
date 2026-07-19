@@ -712,6 +712,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
 export const CATEGORY_I18N: Record<string, Record<Language, string>> = {
   geschmack: { de: 'Geschmack', en: 'Taste', tr: 'Lezzet' },
+  fleischqualitaet: { de: 'Fleischqualität', en: 'Meat quality', tr: 'Et kalitesi' },
+  sossenqualitaet: { de: 'Soßenqualität', en: 'Sauce quality', tr: 'Sos kalitesi' },
   freundlichkeit: { de: 'Freundlichkeit', en: 'Friendliness', tr: 'Güler yüz' },
   sauberkeit: { de: 'Sauberkeit', en: 'Cleanliness', tr: 'Temizlik' },
   preis_leistung: { de: 'Preis-Leistung', en: 'Value', tr: 'Fiyat-performans' },

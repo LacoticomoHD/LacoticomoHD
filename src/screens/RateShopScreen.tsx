@@ -34,6 +34,8 @@ import {
 
 const EMPTY: RatingInput = {
   geschmack: 0,
+  fleischqualitaet: 0,
+  sossenqualitaet: 0,
   freundlichkeit: 0,
   sauberkeit: 0,
   preis_leistung: 0,
@@ -83,6 +85,8 @@ export function RateShopScreen() {
           setAlreadyVerified(rating.verified);
           setValues({
             geschmack: rating.geschmack,
+            fleischqualitaet: rating.fleischqualitaet,
+            sossenqualitaet: rating.sossenqualitaet,
             freundlichkeit: rating.freundlichkeit,
             sauberkeit: rating.sauberkeit,
             preis_leistung: rating.preis_leistung,

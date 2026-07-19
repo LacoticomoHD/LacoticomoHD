@@ -1,6 +1,8 @@
 /** Bewertungskategorien – jede wird einzeln mit 1–5 Sternen bewertet. */
 export const RATING_CATEGORIES = [
   'geschmack',
+  'fleischqualitaet',
+  'sossenqualitaet',
   'freundlichkeit',
   'sauberkeit',
   'preis_leistung',
@@ -11,6 +13,8 @@ export type RatingCategory = (typeof RATING_CATEGORIES)[number];
 
 export const RATING_CATEGORY_LABELS: Record<RatingCategory, string> = {
   geschmack: 'Geschmack',
+  fleischqualitaet: 'Fleischqualität',
+  sossenqualitaet: 'Soßenqualität',
   freundlichkeit: 'Freundlichkeit',
   sauberkeit: 'Sauberkeit',
   preis_leistung: 'Preis-Leistung',
@@ -204,6 +208,8 @@ export interface Rating {
   shop_id: string;
   user_id: string;
   geschmack: number;
+  fleischqualitaet: number;
+  sossenqualitaet: number;
   freundlichkeit: number;
   sauberkeit: number;
   preis_leistung: number;
@@ -221,6 +227,8 @@ export interface ShopRatingSummary {
   /** Anzahl der vor Ort verifizierten Bewertungen. */
   verifiziert_count: number;
   avg_geschmack: number | null;
+  avg_fleischqualitaet: number | null;
+  avg_sossenqualitaet: number | null;
   avg_freundlichkeit: number | null;
   avg_sauberkeit: number | null;
   avg_preis_leistung: number | null;

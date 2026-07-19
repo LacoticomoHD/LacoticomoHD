@@ -23,6 +23,8 @@ interface OverviewRow extends Shop {
   rating_count: number;
   verifiziert_count: number;
   avg_geschmack: number | null;
+  avg_fleischqualitaet: number | null;
+  avg_sossenqualitaet: number | null;
   avg_freundlichkeit: number | null;
   avg_sauberkeit: number | null;
   avg_preis_leistung: number | null;
@@ -37,6 +39,8 @@ function mapOverviewRow(row: OverviewRow): ShopWithSummary {
     rating_count,
     verifiziert_count,
     avg_geschmack,
+    avg_fleischqualitaet,
+    avg_sossenqualitaet,
     avg_freundlichkeit,
     avg_sauberkeit,
     avg_preis_leistung,
@@ -57,6 +61,8 @@ function mapOverviewRow(row: OverviewRow): ShopWithSummary {
             rating_count,
             verifiziert_count,
             avg_geschmack,
+            avg_fleischqualitaet,
+            avg_sossenqualitaet,
             avg_freundlichkeit,
             avg_sauberkeit,
             avg_preis_leistung,
@@ -267,6 +273,8 @@ export async function fetchMyRating(shopId: string, userId: string): Promise<Rat
 
 export interface RatingInput {
   geschmack: number;
+  fleischqualitaet: number;
+  sossenqualitaet: number;
   freundlichkeit: number;
   sauberkeit: number;
   preis_leistung: number;

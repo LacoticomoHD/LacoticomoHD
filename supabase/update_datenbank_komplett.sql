@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v9), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v10), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -16,6 +16,20 @@ alter table public.shops   add column if not exists preis_bestaetigt_am timestam
 alter table public.shops   add column if not exists kartenzahlung boolean;
 alter table public.ratings add column if not exists verified      boolean not null default false;
 alter table public.reports add column if not exists status        text not null default 'offen';
+
+-- Neue Bewertungskriterien: Fleisch- und Soßenqualität.
+-- Erst nullbar anlegen, bestehende Bewertungen sinnvoll aus dem Geschmack
+-- ableiten (beide hängen eng am Geschmack), dann auf NOT NULL setzen.
+alter table public.ratings add column if not exists fleischqualitaet smallint;
+alter table public.ratings add column if not exists sossenqualitaet  smallint;
+update public.ratings set fleischqualitaet = geschmack where fleischqualitaet is null;
+update public.ratings set sossenqualitaet  = geschmack where sossenqualitaet  is null;
+alter table public.ratings alter column fleischqualitaet set not null;
+alter table public.ratings alter column sossenqualitaet  set not null;
+alter table public.ratings drop constraint if exists ratings_fleischqualitaet_check;
+alter table public.ratings add  constraint ratings_fleischqualitaet_check check (fleischqualitaet between 1 and 5);
+alter table public.ratings drop constraint if exists ratings_sossenqualitaet_check;
+alter table public.ratings add  constraint ratings_sossenqualitaet_check check (sossenqualitaet between 1 and 5);
 
 -- Läden bleiben bei Kontolöschung erhalten (created_by darf leer sein)
 alter table public.shops alter column created_by drop not null;
@@ -108,12 +122,14 @@ select
   count(*)::int                                as rating_count,
   (count(*) filter (where verified))::int      as verifiziert_count,
   round(avg(geschmack)::numeric, 2)::float8      as avg_geschmack,
+  round(avg(fleischqualitaet)::numeric, 2)::float8 as avg_fleischqualitaet,
+  round(avg(sossenqualitaet)::numeric, 2)::float8  as avg_sossenqualitaet,
   round(avg(freundlichkeit)::numeric, 2)::float8 as avg_freundlichkeit,
   round(avg(sauberkeit)::numeric, 2)::float8     as avg_sauberkeit,
   round(avg(preis_leistung)::numeric, 2)::float8 as avg_preis_leistung,
   round(avg(wartezeit)::numeric, 2)::float8      as avg_wartezeit,
   round(
-    avg((geschmack + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 5.0)::numeric,
+    avg((geschmack + fleischqualitaet + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 7.0)::numeric,
     2
   )::float8 as avg_gesamt
 from public.ratings
@@ -158,6 +174,8 @@ select
   coalesce(rs.rating_count, 0)      as rating_count,
   coalesce(rs.verifiziert_count, 0) as verifiziert_count,
   rs.avg_geschmack,
+  rs.avg_fleischqualitaet,
+  rs.avg_sossenqualitaet,
   rs.avg_freundlichkeit,
   rs.avg_sauberkeit,
   rs.avg_preis_leistung,
