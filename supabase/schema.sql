@@ -41,7 +41,8 @@ create table public.ratings (
   shop_id        uuid not null references public.shops (id) on delete cascade,
   user_id        uuid not null references auth.users (id) on delete cascade,
   geschmack      smallint not null check (geschmack between 1 and 5),
-  fleischqualitaet smallint not null check (fleischqualitaet between 1 and 5),
+  -- Fleischqualität ist optional (vegetarisch/vegan): darf NULL sein.
+  fleischqualitaet smallint check (fleischqualitaet is null or fleischqualitaet between 1 and 5),
   sossenqualitaet  smallint not null check (sossenqualitaet between 1 and 5),
   freundlichkeit smallint not null check (freundlichkeit between 1 and 5),
   sauberkeit     smallint not null check (sauberkeit between 1 and 5),
@@ -242,8 +243,15 @@ select
   round(avg(sauberkeit)::numeric, 2)::float8     as avg_sauberkeit,
   round(avg(preis_leistung)::numeric, 2)::float8 as avg_preis_leistung,
   round(avg(wartezeit)::numeric, 2)::float8      as avg_wartezeit,
+  -- Fleischqualität ist optional: fehlt sie, zählt der Schnitt aus 6 statt 7 Kriterien.
   round(
-    avg((geschmack + fleischqualitaet + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 7.0)::numeric,
+    avg(
+      case
+        when fleischqualitaet is null
+          then (geschmack + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 6.0
+        else (geschmack + fleischqualitaet + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 7.0
+      end
+    )::numeric,
     2
   )::float8 as avg_gesamt
 from public.ratings

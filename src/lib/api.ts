@@ -273,7 +273,8 @@ export async function fetchMyRating(shopId: string, userId: string): Promise<Rat
 
 export interface RatingInput {
   geschmack: number;
-  fleischqualitaet: number;
+  /** Optional (vegetarisch/vegan): null = nicht bewertet. */
+  fleischqualitaet: number | null;
   sossenqualitaet: number;
   freundlichkeit: number;
   sauberkeit: number;

@@ -208,7 +208,8 @@ export interface Rating {
   shop_id: string;
   user_id: string;
   geschmack: number;
-  fleischqualitaet: number;
+  /** Optional – bei vegetarisch/vegan darf die Fleischqualität leer (null) bleiben. */
+  fleischqualitaet: number | null;
   sossenqualitaet: number;
   freundlichkeit: number;
   sauberkeit: number;

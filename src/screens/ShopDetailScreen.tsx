@@ -356,16 +356,21 @@ export function ShopDetailScreen() {
           ) : null}
         </View>
         {summary && summary.rating_count > 0 ? (
-          RATING_CATEGORIES.map((cat, i) => (
-            <RatingBar
-              key={cat}
-              value={summary[`avg_${cat}`] ?? 0}
-              label={categoryLabel(cat)}
-              trackColor={theme.colors.surfaceVariant}
-              textColor={theme.colors.text}
-              delay={i * 90}
-            />
-          ))
+          RATING_CATEGORIES.map((cat, i) => {
+            const avgCat = summary[`avg_${cat}`];
+            // Optionale Fleischqualität: ohne Angabe keinen (irreführenden) 0-Balken zeigen.
+            if (avgCat == null) return null;
+            return (
+              <RatingBar
+                key={cat}
+                value={avgCat}
+                label={categoryLabel(cat)}
+                trackColor={theme.colors.surfaceVariant}
+                textColor={theme.colors.text}
+                delay={i * 90}
+              />
+            );
+          })
         ) : (
           <Text style={{ color: theme.colors.textSecondary }}>
             {t('detail.noRatingsBeFirst')}

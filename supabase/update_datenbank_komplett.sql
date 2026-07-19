@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v10), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v11), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -18,16 +18,16 @@ alter table public.ratings add column if not exists verified      boolean not nu
 alter table public.reports add column if not exists status        text not null default 'offen';
 
 -- Neue Bewertungskriterien: Fleisch- und Soßenqualität.
--- Erst nullbar anlegen, bestehende Bewertungen sinnvoll aus dem Geschmack
--- ableiten (beide hängen eng am Geschmack), dann auf NOT NULL setzen.
+-- Fleischqualität ist OPTIONAL (vegetarisch/vegan) → darf NULL bleiben; deshalb
+-- kein Backfill (sonst würden bewusst leere Angaben bei erneutem Lauf überschrieben).
+-- Soßenqualität ist Pflicht; bestehende Bewertungen einmalig aus dem Geschmack ableiten.
 alter table public.ratings add column if not exists fleischqualitaet smallint;
 alter table public.ratings add column if not exists sossenqualitaet  smallint;
-update public.ratings set fleischqualitaet = geschmack where fleischqualitaet is null;
-update public.ratings set sossenqualitaet  = geschmack where sossenqualitaet  is null;
-alter table public.ratings alter column fleischqualitaet set not null;
+update public.ratings set sossenqualitaet = geschmack where sossenqualitaet is null;
+alter table public.ratings alter column fleischqualitaet drop not null;
 alter table public.ratings alter column sossenqualitaet  set not null;
 alter table public.ratings drop constraint if exists ratings_fleischqualitaet_check;
-alter table public.ratings add  constraint ratings_fleischqualitaet_check check (fleischqualitaet between 1 and 5);
+alter table public.ratings add  constraint ratings_fleischqualitaet_check check (fleischqualitaet is null or fleischqualitaet between 1 and 5);
 alter table public.ratings drop constraint if exists ratings_sossenqualitaet_check;
 alter table public.ratings add  constraint ratings_sossenqualitaet_check check (sossenqualitaet between 1 and 5);
 
@@ -128,8 +128,15 @@ select
   round(avg(sauberkeit)::numeric, 2)::float8     as avg_sauberkeit,
   round(avg(preis_leistung)::numeric, 2)::float8 as avg_preis_leistung,
   round(avg(wartezeit)::numeric, 2)::float8      as avg_wartezeit,
+  -- Fleischqualität ist optional: fehlt sie, zählt der Schnitt aus 6 statt 7 Kriterien.
   round(
-    avg((geschmack + fleischqualitaet + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 7.0)::numeric,
+    avg(
+      case
+        when fleischqualitaet is null
+          then (geschmack + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 6.0
+        else (geschmack + fleischqualitaet + sossenqualitaet + freundlichkeit + sauberkeit + preis_leistung + wartezeit) / 7.0
+      end
+    )::numeric,
     2
   )::float8 as avg_gesamt
 from public.ratings

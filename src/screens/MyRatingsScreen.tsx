@@ -11,10 +11,14 @@ import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { RATING_CATEGORIES, RatingWithShop } from '@/types';
 
-/** Eigener Gesamtschnitt einer Bewertung über alle Kategorien. */
+/** Eigener Gesamtschnitt einer Bewertung – nur über tatsächlich vergebene
+ *  Kategorien (Fleischqualität ist optional und darf fehlen). */
 function ownAverage(rating: RatingWithShop): number {
-  const sum = RATING_CATEGORIES.reduce((acc, cat) => acc + rating[cat], 0);
-  return sum / RATING_CATEGORIES.length;
+  const values = RATING_CATEGORIES.map((cat) => rating[cat]).filter(
+    (v): v is number => typeof v === 'number' && v >= 1
+  );
+  if (values.length === 0) return 0;
+  return values.reduce((acc, v) => acc + v, 0) / values.length;
 }
 
 export function MyRatingsScreen() {

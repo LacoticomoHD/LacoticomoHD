@@ -32,7 +32,8 @@ import {
   ShopFeature,
 } from '@/types';
 
-const EMPTY: RatingInput = {
+// UI-Zustand: 0 = noch nicht bewertet. Fleischqualität darf 0 bleiben (optional).
+const EMPTY: Record<RatingCategory, number> = {
   geschmack: 0,
   fleischqualitaet: 0,
   sossenqualitaet: 0,
@@ -53,7 +54,7 @@ export function RateShopScreen() {
   const navigation = useNavigation();
   const { shopId, shopName, latitude, longitude } = route.params;
 
-  const [values, setValues] = useState<RatingInput>(EMPTY);
+  const [values, setValues] = useState<Record<RatingCategory, number>>(EMPTY);
   const [votes, setVotes] = useState<VoteState>({});
   const [existing, setExisting] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
@@ -85,7 +86,7 @@ export function RateShopScreen() {
           setAlreadyVerified(rating.verified);
           setValues({
             geschmack: rating.geschmack,
-            fleischqualitaet: rating.fleischqualitaet,
+            fleischqualitaet: rating.fleischqualitaet ?? 0,
             sossenqualitaet: rating.sossenqualitaet,
             freundlichkeit: rating.freundlichkeit,
             sauberkeit: rating.sauberkeit,
@@ -130,7 +131,8 @@ export function RateShopScreen() {
 
   const submit = async () => {
     if (!user) return;
-    if (RATING_CATEGORIES.some((cat) => values[cat] < 1)) {
+    // Alle Kategorien sind Pflicht – außer Fleischqualität (bei vegetarisch/vegan optional).
+    if (RATING_CATEGORIES.some((cat) => cat !== 'fleischqualitaet' && values[cat] < 1)) {
       Alert.alert(t('rate.incomplete'), t('rate.incompleteBody'));
       return;
     }
@@ -148,8 +150,18 @@ export function RateShopScreen() {
     try {
       // Einmal verifiziert bleibt verifiziert – auch wenn später von zu Hause angepasst wird.
       const verified = alreadyVerified || (await checkOnSite());
+      // Fleischqualität 0 (nicht bewertet) → null in der Datenbank.
+      const ratingInput: RatingInput = {
+        geschmack: values.geschmack,
+        fleischqualitaet: values.fleischqualitaet >= 1 ? values.fleischqualitaet : null,
+        sossenqualitaet: values.sossenqualitaet,
+        freundlichkeit: values.freundlichkeit,
+        sauberkeit: values.sauberkeit,
+        preis_leistung: values.preis_leistung,
+        wartezeit: values.wartezeit,
+      };
       // Erst die Bewertung – sie ist die Voraussetzung, um über Besonderheiten abzustimmen.
-      await upsertRating(shopId, user.id, values, verified);
+      await upsertRating(shopId, user.id, ratingInput, verified);
       await saveFeatureVotes(shopId, user.id, votes);
       // Preis-Feedback ist Bonus – Fehler hier sollen die Bewertung nicht blockieren.
       try {
@@ -209,7 +221,18 @@ export function RateShopScreen() {
         >
           <Text style={[styles.label, { color: theme.colors.text }]}>
             {categoryLabel(cat)}
+            {cat === 'fleischqualitaet' ? (
+              <Text style={{ color: theme.colors.textSecondary, fontWeight: '400', fontSize: 13 }}>
+                {'  '}
+                {t('rate.optional')}
+              </Text>
+            ) : null}
           </Text>
+          {cat === 'fleischqualitaet' ? (
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginBottom: 10, marginTop: -4 }}>
+              {t('rate.meatOptionalHint')}
+            </Text>
+          ) : null}
           <StarRating value={values[cat]} onChange={(v) => setCategory(cat, v)} size={30} />
         </View>
       ))}
