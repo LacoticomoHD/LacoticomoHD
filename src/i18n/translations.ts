@@ -65,6 +65,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'list.searchPlaceholder': 'Deutschlandweit nach Name oder Adresse suchen…',
     'list.sort': 'Sortierung:',
     'list.sortBest': '⭐ Beste zuerst',
+    'list.sortCheapest': '💶 Günstigste',
     'list.sortNearest': '📍 In meiner Nähe',
     'list.locationNeeded': 'Standort benötigt',
     'list.locationNeededBody':
@@ -305,6 +306,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'list.searchPlaceholder': 'Search Germany-wide by name or address…',
     'list.sort': 'Sort:',
     'list.sortBest': '⭐ Best first',
+    'list.sortCheapest': '💶 Cheapest',
     'list.sortNearest': '📍 Near me',
     'list.locationNeeded': 'Location required',
     'list.locationNeededBody': 'To sort by distance, location access must be allowed.',
@@ -532,6 +534,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'list.searchPlaceholder': 'Almanya genelinde ada veya adrese göre ara…',
     'list.sort': 'Sıralama:',
     'list.sortBest': '⭐ Önce en iyi',
+    'list.sortCheapest': '💶 En ucuz',
     'list.sortNearest': '📍 Yakınımda',
     'list.locationNeeded': 'Konum gerekli',
     'list.locationNeededBody': 'Mesafeye göre sıralamak için konum erişimine izin verilmelidir.',

@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -23,7 +23,7 @@ const DEFAULT_CENTER = { latitude: 49.0093, longitude: 8.4044 };
 // ±0,25° Breite ≈ Umkreis von rund 25 km
 const NEARBY_DELTA = 0.25;
 
-type SortMode = 'rating' | 'distance';
+type SortMode = 'rating' | 'distance' | 'price';
 
 interface Coords {
   latitude: number;
@@ -120,6 +120,12 @@ export function ShopListScreen() {
           distanceKm(position.latitude, position.longitude, b.latitude, b.longitude)
       );
     }
+    if (sortMode === 'price') {
+      // Günstigste zuerst; Läden ohne Preisangabe ans Ende.
+      return filtered.sort(
+        (a, b) => (a.doener_preis ?? Infinity) - (b.doener_preis ?? Infinity)
+      );
+    }
     return filtered.sort(
       (a, b) => (b.summary?.avg_gesamt ?? -1) - (a.summary?.avg_gesamt ?? -1)
     );
@@ -143,11 +149,21 @@ export function ShopListScreen() {
         />
       </View>
       <FilterBar />
-      <View style={styles.sortRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.sortBar}
+        contentContainerStyle={styles.sortRow}
+      >
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('list.sort')}</Text>
         <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
             {t('list.sortBest')}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => setSortMode('price')} style={sortChip(sortMode === 'price')}>
+          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
+            {t('list.sortCheapest')}
           </Text>
         </Pressable>
         <Pressable onPress={selectDistanceSort} style={sortChip(sortMode === 'distance')}>
@@ -155,7 +171,7 @@ export function ShopListScreen() {
             {t('list.sortNearest')}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
@@ -286,11 +302,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
+  sortBar: { flexGrow: 0, marginTop: 4 },
   sortRow: {
     alignItems: 'center',
-    flexDirection: 'row',
     gap: 8,
-    paddingBottom: 8,
+    paddingBottom: 10,
     paddingHorizontal: 16,
+    paddingTop: 2,
   },
 });
