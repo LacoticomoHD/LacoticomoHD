@@ -55,11 +55,11 @@ export function FilterBar() {
 }
 
 const styles = StyleSheet.create({
-  // Feste, kompakte Höhe: Über Flexbox wird die Höhe der horizontalen Leiste
-  // sonst unzuverlässig bestimmt (mal zu klein → Chips abgeschnitten, mal zu
-  // groß → aufgebläht). flexShrink:0 verhindert Zusammenquetschen durch die
-  // Ergebnisliste darunter; die Chips werden vertikal zentriert.
-  bar: { height: 56, flexShrink: 0 },
+  // Exakt 56px hoch, direkt unter dem Suchfeld. Wichtig: RN-ScrollViews haben
+  // von Haus aus flexGrow:1 UND flexShrink:1 – ohne beides explizit auf 0 wird
+  // die Leiste je nach Platz abgeschnitten (geschrumpft) oder es entstehen
+  // riesige Lücken (gewachsen, Höhe zählt nur als Startwert).
+  bar: { flexGrow: 0, flexShrink: 0, height: 56 },
   chip: {
     borderRadius: 18,
     borderWidth: 1,
