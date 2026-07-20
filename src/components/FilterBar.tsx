@@ -55,9 +55,10 @@ export function FilterBar() {
 }
 
 const styles = StyleSheet.create({
-  // flexGrow:0 verhindert, dass die horizontale Leiste in der Listen-Ansicht
-  // vertikal gestreckt/gestaucht wird und mit der Sortier-Zeile überlappt.
-  bar: { flexGrow: 0 },
+  // flexShrink:0: In der Listen-Ansicht darf die darunterliegende Ergebnisliste
+  // die horizontale Filterleiste nicht vertikal zusammenquetschen (sonst werden
+  // die Chips oben abgeschnitten). alignItems zentriert die Chips sauber.
+  bar: { flexShrink: 0 },
   chip: {
     borderRadius: 18,
     borderWidth: 1,

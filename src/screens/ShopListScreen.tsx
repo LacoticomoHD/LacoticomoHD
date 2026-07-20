@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -149,12 +149,7 @@ export function ShopListScreen() {
         />
       </View>
       <FilterBar />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.sortBar}
-        contentContainerStyle={styles.sortRow}
-      >
+      <View style={styles.sortRow}>
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('list.sort')}</Text>
         <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
@@ -171,10 +166,11 @@ export function ShopListScreen() {
             {t('list.sortNearest')}
           </Text>
         </Pressable>
-      </ScrollView>
+      </View>
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
+        style={styles.flex}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
@@ -302,12 +298,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  sortBar: { flexGrow: 0, marginTop: 4 },
   sortRow: {
     alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingBottom: 10,
+    marginTop: 6,
+    paddingBottom: 8,
     paddingHorizontal: 16,
-    paddingTop: 2,
   },
 });
