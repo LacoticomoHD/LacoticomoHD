@@ -55,10 +55,11 @@ export function FilterBar() {
 }
 
 const styles = StyleSheet.create({
-  // flexShrink:0: In der Listen-Ansicht darf die darunterliegende Ergebnisliste
-  // die horizontale Filterleiste nicht vertikal zusammenquetschen (sonst werden
-  // die Chips oben abgeschnitten). alignItems zentriert die Chips sauber.
-  bar: { flexShrink: 0 },
+  // Feste, kompakte Höhe: Über Flexbox wird die Höhe der horizontalen Leiste
+  // sonst unzuverlässig bestimmt (mal zu klein → Chips abgeschnitten, mal zu
+  // groß → aufgebläht). flexShrink:0 verhindert Zusammenquetschen durch die
+  // Ergebnisliste darunter; die Chips werden vertikal zentriert.
+  bar: { height: 56, flexShrink: 0 },
   chip: {
     borderRadius: 18,
     borderWidth: 1,
@@ -71,5 +72,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 2,
   },
-  content: { paddingHorizontal: 12, paddingVertical: 8 },
+  content: { alignItems: 'center', paddingHorizontal: 12 },
 });
