@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v11), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v12), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -41,7 +41,7 @@ alter table public.shops
 -- Besonderheiten-Liste auf den aktuellen Stand (12 Merkmale)
 alter table public.shops drop constraint if exists valid_features;
 alter table public.shops add constraint valid_features check (
-  features <@ array['kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht']::text[]
+  features <@ array['kalb', 'haehnchen', 'pute', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht']::text[]
 );
 
 -- Meldegründe auf den aktuellen Stand
@@ -65,7 +65,7 @@ create table if not exists public.shop_feature_votes (
   shop_id    uuid not null references public.shops (id) on delete cascade,
   user_id    uuid not null references auth.users (id) on delete cascade,
   feature    text not null check (
-    feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
+    feature in ('kalb', 'haehnchen', 'pute', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
   ),
   vote       smallint not null check (vote in (-1, 1)),
   created_at timestamptz not null default now(),
@@ -95,7 +95,7 @@ create table if not exists public.hours_votes (
 -- Besonderheiten-Liste auch in der (ggf. schon vorhandenen) Abstimmungs-Tabelle aktualisieren
 alter table public.shop_feature_votes drop constraint if exists shop_feature_votes_feature_check;
 alter table public.shop_feature_votes add constraint shop_feature_votes_feature_check check (
-  feature in ('kalb', 'haehnchen', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
+  feature in ('kalb', 'haehnchen', 'pute', 'lamm', 'oktopus', 'vegetarisch', 'vegan', 'halal', 'hausgemachtes_brot', 'joghurtsosse', 'knoblauchsosse', 'scharfe_sosse', 'cocktailsosse', 'ayran_hausgemacht')
 );
 
 create index if not exists ratings_shop_id_idx        on public.ratings (shop_id);

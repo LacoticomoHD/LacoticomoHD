@@ -27,6 +27,7 @@ export const RATING_CATEGORY_LABELS: Record<RatingCategory, string> = {
 export const SHOP_FEATURES = [
   'kalb',
   'haehnchen',
+  'pute',
   'lamm',
   'oktopus',
   'vegetarisch',
@@ -45,6 +46,7 @@ export type ShopFeature = (typeof SHOP_FEATURES)[number];
 export const SHOP_FEATURE_LABELS: Record<ShopFeature, string> = {
   kalb: 'Kalb',
   haehnchen: 'Hähnchen',
+  pute: 'Putenfleisch',
   lamm: 'Lammfleisch',
   oktopus: 'Oktopusfleisch',
   vegetarisch: 'Vegetarisch',
@@ -61,6 +63,7 @@ export const SHOP_FEATURE_LABELS: Record<ShopFeature, string> = {
 export const SHOP_FEATURE_ICONS: Record<ShopFeature, string> = {
   kalb: '🐄',
   haehnchen: '🐔',
+  pute: '🦃',
   lamm: '🐑',
   oktopus: '🐙',
   vegetarisch: '🥗',

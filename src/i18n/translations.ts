@@ -735,6 +735,7 @@ export const CATEGORY_I18N: Record<string, Record<Language, string>> = {
 export const FEATURE_I18N: Record<string, Record<Language, string>> = {
   kalb: { de: 'Kalb', en: 'Veal', tr: 'Dana' },
   haehnchen: { de: 'Hähnchen', en: 'Chicken', tr: 'Tavuk' },
+  pute: { de: 'Putenfleisch', en: 'Turkey', tr: 'Hindi' },
   lamm: { de: 'Lammfleisch', en: 'Lamb', tr: 'Kuzu' },
   oktopus: { de: 'Oktopusfleisch', en: 'Octopus', tr: 'Ahtapot' },
   vegetarisch: { de: 'Vegetarisch', en: 'Vegetarian', tr: 'Vejetaryen' },
