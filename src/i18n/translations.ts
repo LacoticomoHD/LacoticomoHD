@@ -50,6 +50,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.open': 'Geöffnet',
     'common.closed': 'Geschlossen',
     'common.openNow': 'Jetzt geöffnet',
+    'filter.cardPayment': 'Kartenzahlung möglich',
     'common.noRating': 'Noch keine Bewertung',
 
     // Map
@@ -291,6 +292,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.open': 'Open',
     'common.closed': 'Closed',
     'common.openNow': 'Open now',
+    'filter.cardPayment': 'Card payment',
     'common.noRating': 'No rating yet',
 
     'map.search': 'Search shop or city …',
@@ -517,6 +519,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.open': 'Açık',
     'common.closed': 'Kapalı',
     'common.openNow': 'Şimdi açık',
+    'filter.cardPayment': 'Kartla ödeme',
     'common.noRating': 'Henüz değerlendirme yok',
 
     'map.search': 'Dükkan veya şehir ara …',

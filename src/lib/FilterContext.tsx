@@ -4,12 +4,15 @@ import { Shop, ShopFeature } from '@/types';
 
 import { isOpenNow } from './openingHours';
 
-/** Gemeinsamer Filter für Karte und Liste: Besonderheiten (UND-verknüpft) + "Jetzt geöffnet". */
+/** Gemeinsamer Filter für Karte und Liste: Besonderheiten (UND-verknüpft) +
+ *  "Jetzt geöffnet" + "Kartenzahlung möglich". */
 interface FilterContextValue {
   activeFeatures: ShopFeature[];
   openNowOnly: boolean;
+  cardPaymentOnly: boolean;
   toggleFeature: (f: ShopFeature) => void;
   toggleOpenNow: () => void;
+  toggleCardPayment: () => void;
   hasActiveFilters: boolean;
   matchesFilters: (shop: Shop) => boolean;
 }
@@ -17,8 +20,10 @@ interface FilterContextValue {
 const FilterContext = createContext<FilterContextValue>({
   activeFeatures: [],
   openNowOnly: false,
+  cardPaymentOnly: false,
   toggleFeature: () => {},
   toggleOpenNow: () => {},
+  toggleCardPayment: () => {},
   hasActiveFilters: false,
   matchesFilters: () => true,
 });
@@ -26,6 +31,7 @@ const FilterContext = createContext<FilterContextValue>({
 export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [activeFeatures, setActiveFeatures] = useState<ShopFeature[]>([]);
   const [openNowOnly, setOpenNowOnly] = useState(false);
+  const [cardPaymentOnly, setCardPaymentOnly] = useState(false);
 
   const toggleFeature = useCallback((f: ShopFeature) => {
     setActiveFeatures((prev) =>
@@ -34,25 +40,29 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleOpenNow = useCallback(() => setOpenNowOnly((prev) => !prev), []);
+  const toggleCardPayment = useCallback(() => setCardPaymentOnly((prev) => !prev), []);
 
   const matchesFilters = useCallback(
     (shop: Shop) => {
       if (openNowOnly && !isOpenNow(shop.opening_hours ?? {})) return false;
+      if (cardPaymentOnly && shop.kartenzahlung !== true) return false;
       return activeFeatures.every((f) => (shop.features ?? []).includes(f));
     },
-    [activeFeatures, openNowOnly]
+    [activeFeatures, openNowOnly, cardPaymentOnly]
   );
 
   const value = useMemo(
     () => ({
       activeFeatures,
       openNowOnly,
+      cardPaymentOnly,
       toggleFeature,
       toggleOpenNow,
-      hasActiveFilters: openNowOnly || activeFeatures.length > 0,
+      toggleCardPayment,
+      hasActiveFilters: openNowOnly || cardPaymentOnly || activeFeatures.length > 0,
       matchesFilters,
     }),
-    [activeFeatures, openNowOnly, toggleFeature, toggleOpenNow, matchesFilters]
+    [activeFeatures, openNowOnly, cardPaymentOnly, toggleFeature, toggleOpenNow, toggleCardPayment, matchesFilters]
   );
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
