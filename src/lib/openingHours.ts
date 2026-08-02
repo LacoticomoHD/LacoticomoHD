@@ -6,6 +6,19 @@ export function weekdayKey(date: Date): Weekday {
   return WEEKDAYS[(jsDay + 6) % 7];
 }
 
+/** True, wenn für den Laden überhaupt Öffnungszeiten hinterlegt sind. */
+export function hasOpeningHours(hours: OpeningHours | null | undefined): boolean {
+  return !!hours && Object.keys(hours).length > 0;
+}
+
+/** Öffnungsstatus für die Anzeige: 'unknown', wenn gar keine Zeiten hinterlegt
+ *  sind (dann ist "Geschlossen" irreführend), sonst 'open' oder 'closed'. */
+export type OpenStatus = 'open' | 'closed' | 'unknown';
+export function openStatus(hours: OpeningHours | null | undefined, now: Date = new Date()): OpenStatus {
+  if (!hasOpeningHours(hours)) return 'unknown';
+  return isOpenNow(hours as OpeningHours, now) ? 'open' : 'closed';
+}
+
 /** Prüft, ob der Laden zum Zeitpunkt `now` geöffnet ist.
  *  Unterstützt auch Öffnungszeiten über Mitternacht (z. B. 18:00–02:00). */
 export function isOpenNow(hours: OpeningHours, now: Date = new Date()): boolean {

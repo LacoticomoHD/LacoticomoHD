@@ -13,7 +13,7 @@ import { fetchShopsInBounds, searchShops } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
 import { distanceKm, formatDistance, formatPrice } from '@/lib/geo';
-import { isOpenNow } from '@/lib/openingHours';
+import { openStatus } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { SHOP_FEATURE_ICONS, ShopWithSummary } from '@/types';
@@ -182,7 +182,7 @@ export function ShopListScreen() {
           </Text>
         }
         renderItem={({ item }) => {
-          const open = isOpenNow(item.opening_hours ?? {});
+          const status = openStatus(item.opening_hours ?? {});
           const avg = item.summary?.avg_gesamt;
           const dist = position
             ? distanceKm(position.latitude, position.longitude, item.latitude, item.longitude)
@@ -201,12 +201,21 @@ export function ShopListScreen() {
                 </Text>
                 <Text
                   style={{
-                    color: open ? theme.colors.success : theme.colors.danger,
+                    color:
+                      status === 'open'
+                        ? theme.colors.success
+                        : status === 'closed'
+                          ? theme.colors.danger
+                          : theme.colors.textSecondary,
                     fontSize: 12,
                     fontWeight: '700',
                   }}
                 >
-                  {open ? t('common.open') : t('common.closed')}
+                  {status === 'open'
+                    ? t('common.open')
+                    : status === 'closed'
+                      ? t('common.closed')
+                      : t('common.hoursUnknown')}
                 </Text>
               </View>
               <Text

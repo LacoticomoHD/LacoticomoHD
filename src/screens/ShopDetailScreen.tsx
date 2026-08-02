@@ -34,7 +34,7 @@ import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium, tapSelection } from '@/lib/haptics';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
-import { isOpenNow } from '@/lib/openingHours';
+import { openStatus } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
@@ -190,7 +190,7 @@ export function ShopDetailScreen() {
     );
   }
 
-  const open = isOpenNow(shop.opening_hours ?? {});
+  const hoursStatus = openStatus(shop.opening_hours ?? {});
   const avg = summary?.avg_gesamt;
 
   return (
@@ -220,8 +220,25 @@ export function ShopDetailScreen() {
             </View>
           ) : null}
           <View style={styles.heroPill}>
-            <Text style={[styles.heroPillText, { color: open ? '#B9F6CA' : '#FFCDD2' }]}>
-              ● {open ? t('common.open') : t('common.closed')}
+            <Text
+              style={[
+                styles.heroPillText,
+                {
+                  color:
+                    hoursStatus === 'open'
+                      ? '#B9F6CA'
+                      : hoursStatus === 'closed'
+                        ? '#FFCDD2'
+                        : 'rgba(255,255,255,0.85)',
+                },
+              ]}
+            >
+              ●{' '}
+              {hoursStatus === 'open'
+                ? t('common.open')
+                : hoursStatus === 'closed'
+                  ? t('common.closed')
+                  : t('common.hoursUnknown')}
             </Text>
           </View>
           {shop.kartenzahlung != null ? (
@@ -395,45 +412,55 @@ export function ShopDetailScreen() {
       {/* Öffnungszeiten */}
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.hours')}</Text>
-        {hoursVotes && hoursVotes.score <= -2 ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 13, marginBottom: 8 }}>
-            {t('detail.hoursOutdated')}
-          </Text>
-        ) : null}
-        <OpeningHoursTable hours={shop.opening_hours ?? {}} />
-        <View style={[styles.hoursVoteRow, { borderTopColor: theme.colors.border }]}>
-          <Text style={{ color: theme.colors.textSecondary, flex: 1, fontSize: 13 }}>
-            {t('detail.hoursConfirm')}
-          </Text>
-          <Pressable
-            onPress={() => voteHours(1)}
-            style={[
-              styles.hoursVoteButton,
-              {
-                backgroundColor:
-                  myHoursVote === 1 ? theme.colors.success : theme.colors.surfaceVariant,
-              },
-            ]}
-          >
-            <Text style={{ color: myHoursVote === 1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
-              👍 {hoursVotes?.bestaetigt ?? 0}
+        {hoursStatus === 'unknown' ? (
+          <Pressable onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}>
+            <Text style={{ color: theme.colors.primary, fontSize: 14, lineHeight: 20 }}>
+              🕐 {t('detail.hoursUnknownHint')}
             </Text>
           </Pressable>
-          <Pressable
-            onPress={() => voteHours(-1)}
-            style={[
-              styles.hoursVoteButton,
-              {
-                backgroundColor:
-                  myHoursVote === -1 ? theme.colors.danger : theme.colors.surfaceVariant,
-              },
-            ]}
-          >
-            <Text style={{ color: myHoursVote === -1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
-              👎 {hoursVotes?.veraltet ?? 0}
-            </Text>
-          </Pressable>
-        </View>
+        ) : (
+          <>
+            {hoursVotes && hoursVotes.score <= -2 ? (
+              <Text style={{ color: theme.colors.danger, fontSize: 13, marginBottom: 8 }}>
+                {t('detail.hoursOutdated')}
+              </Text>
+            ) : null}
+            <OpeningHoursTable hours={shop.opening_hours ?? {}} />
+            <View style={[styles.hoursVoteRow, { borderTopColor: theme.colors.border }]}>
+              <Text style={{ color: theme.colors.textSecondary, flex: 1, fontSize: 13 }}>
+                {t('detail.hoursConfirm')}
+              </Text>
+              <Pressable
+                onPress={() => voteHours(1)}
+                style={[
+                  styles.hoursVoteButton,
+                  {
+                    backgroundColor:
+                      myHoursVote === 1 ? theme.colors.success : theme.colors.surfaceVariant,
+                  },
+                ]}
+              >
+                <Text style={{ color: myHoursVote === 1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
+                  👍 {hoursVotes?.bestaetigt ?? 0}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => voteHours(-1)}
+                style={[
+                  styles.hoursVoteButton,
+                  {
+                    backgroundColor:
+                      myHoursVote === -1 ? theme.colors.danger : theme.colors.surfaceVariant,
+                  },
+                ]}
+              >
+                <Text style={{ color: myHoursVote === -1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
+                  👎 {hoursVotes?.veraltet ?? 0}
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.ctaWrap}>

@@ -7,7 +7,7 @@ import { StarRating } from '@/components/StarRating';
 import { fetchFavoriteShops, removeFavorite } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { formatPrice } from '@/lib/geo';
-import { isOpenNow } from '@/lib/openingHours';
+import { openStatus } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -51,7 +51,7 @@ export function FavoritesScreen() {
           </Text>
         }
         renderItem={({ item }) => {
-          const open = isOpenNow(item.opening_hours ?? {});
+          const status = openStatus(item.opening_hours ?? {});
           const avg = item.summary?.avg_gesamt;
           return (
             <Pressable
@@ -68,12 +68,21 @@ export function FavoritesScreen() {
                   </Text>
                   <Text
                     style={{
-                      color: open ? theme.colors.success : theme.colors.danger,
+                      color:
+                        status === 'open'
+                          ? theme.colors.success
+                          : status === 'closed'
+                            ? theme.colors.danger
+                            : theme.colors.textSecondary,
                       fontSize: 12,
                       fontWeight: '700',
                     }}
                   >
-                    {open ? t('common.open') : t('common.closed')}
+                    {status === 'open'
+                      ? t('common.open')
+                      : status === 'closed'
+                        ? t('common.closed')
+                        : t('common.hoursUnknown')}
                   </Text>
                 </View>
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
