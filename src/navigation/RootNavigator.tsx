@@ -20,6 +20,7 @@ import { ProfileScreen } from '@/screens/ProfileScreen';
 import { RateShopScreen } from '@/screens/RateShopScreen';
 import { ReportShopScreen } from '@/screens/ReportShopScreen';
 import { ReportsInboxScreen } from '@/screens/ReportsInboxScreen';
+import { ResetPasswordScreen } from '@/screens/ResetPasswordScreen';
 import { ShopDetailScreen } from '@/screens/ShopDetailScreen';
 import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
@@ -72,7 +73,7 @@ function Tabs() {
 export function RootNavigator() {
   const { theme } = useTheme();
   const { t } = useI18n();
-  const { session, loading } = useAuth();
+  const { session, loading, passwordRecovery } = useAuth();
 
   const navTheme = theme.dark
     ? {
@@ -115,7 +116,11 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      {session ? (
+      {passwordRecovery ? (
+        // Kommt der Nutzer über den Link aus der Passwort-vergessen-Mail,
+        // muss zuerst ein neues Passwort gesetzt werden.
+        <ResetPasswordScreen />
+      ) : session ? (
         <Stack.Navigator>
           <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen

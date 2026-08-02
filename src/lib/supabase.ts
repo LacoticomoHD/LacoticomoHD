@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 // In .env hinterlegen (siehe README): EXPO_PUBLIC_SUPABASE_URL und EXPO_PUBLIC_SUPABASE_ANON_KEY
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -25,7 +26,9 @@ export const supabase = createClient(
       storage: AsyncStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      // Im Web muss der Link aus der Passwort-vergessen-Mail erkannt werden
+      // (die Sitzung steckt dort in der URL). Nativ gibt es keine URL-Session.
+      detectSessionInUrl: Platform.OS === 'web',
     },
   }
 );
