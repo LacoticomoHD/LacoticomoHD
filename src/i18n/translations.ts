@@ -103,6 +103,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.saved': 'Gemerkt',
     'detail.cardYes': 'Karte möglich',
     'detail.cardNo': 'Nur Bar',
+    'detail.payment': 'Bezahlung',
+    'detail.cardUnknownShort': 'Keine Angabe',
+    'detail.cardUnknownHint': 'Weißt du es? Beim Bewerten angeben.',
 
     // Rate
     'rate.introNew': 'Vergib 1 bis 5 Sterne pro Kategorie.',
@@ -342,6 +345,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.saved': 'Saved',
     'detail.cardYes': 'Card accepted',
     'detail.cardNo': 'Cash only',
+    'detail.payment': 'Payment',
+    'detail.cardUnknownShort': 'Not specified',
+    'detail.cardUnknownHint': 'Do you know? Add it when rating.',
 
     'rate.introNew': 'Give 1 to 5 stars per category.',
     'rate.introEdit': "You've already rated this shop – you can adjust your entries.",
@@ -572,6 +578,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'detail.act.saved': 'Kaydedildi',
     'detail.cardYes': 'Kart geçerli',
     'detail.cardNo': 'Sadece nakit',
+    'detail.payment': 'Ödeme',
+    'detail.cardUnknownShort': 'Belirtilmemiş',
+    'detail.cardUnknownHint': 'Biliyor musun? Değerlendirirken ekle.',
 
     'rate.introNew': 'Her kategori için 1 ila 5 yıldız ver.',
     'rate.introEdit': 'Bu dükkanı zaten değerlendirdin – bilgilerini güncelleyebilirsin.',

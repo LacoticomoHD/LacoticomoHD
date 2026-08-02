@@ -241,13 +241,6 @@ export function ShopDetailScreen() {
                   : t('common.hoursUnknown')}
             </Text>
           </View>
-          {shop.kartenzahlung != null ? (
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>
-                {shop.kartenzahlung ? `💳 ${t('detail.cardYes')}` : `💵 ${t('detail.cardNo')}`}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         {summary && summary.verifiziert_count > 0 ? (
@@ -333,6 +326,51 @@ export function ShopDetailScreen() {
           ))}
         </View>
       ) : null}
+
+      {/* Bezahlung – direkt sichtbar, eigenes Feld */}
+      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <View style={styles.paymentRow}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 0 }]}>
+            💳 {t('detail.payment')}
+          </Text>
+          <View style={[styles.paymentBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '800',
+                color:
+                  shop.kartenzahlung === true
+                    ? theme.colors.success
+                    : shop.kartenzahlung === false
+                      ? theme.colors.accent
+                      : theme.colors.textSecondary,
+              }}
+            >
+              {shop.kartenzahlung === true
+                ? `💳 ${t('detail.cardYes')}`
+                : shop.kartenzahlung === false
+                  ? `💵 ${t('detail.cardNo')}`
+                  : t('detail.cardUnknownShort')}
+            </Text>
+          </View>
+        </View>
+        {shop.kartenzahlung == null ? (
+          <Pressable
+            onPress={() =>
+              navigation.navigate('RateShop', {
+                shopId: shop.id,
+                shopName: shop.name,
+                latitude: shop.latitude,
+                longitude: shop.longitude,
+              })
+            }
+          >
+            <Text style={{ color: theme.colors.primary, fontSize: 13, marginTop: 8 }}>
+              {t('detail.cardUnknownHint')}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       {/* Preisverlauf */}
       {priceHistory.length >= 2 ? (
@@ -576,6 +614,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
   },
+  paymentBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  paymentRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   priceHistory: { fontSize: 12, marginHorizontal: 16, marginTop: 10 },
   reportLink: { alignSelf: 'center', marginTop: 14, padding: 4 },
   scoreBadge: {
