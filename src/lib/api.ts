@@ -73,10 +73,14 @@ function mapOverviewRow(row: OverviewRow): ShopWithSummary {
   };
 }
 
+/** Ab wie vielen Läden pro Kartenausschnitt abgeschnitten wird. Wird das Limit
+ *  erreicht, weist die Karte darauf hin, dass man hineinzoomen sollte. */
+export const BOUNDS_LIMIT = 1000;
+
 /** Läden im sichtbaren Kartenausschnitt – die App lädt nie ganz Deutschland auf einmal. */
 export async function fetchShopsInBounds(
   bounds: GeoBounds,
-  limit = 400
+  limit = BOUNDS_LIMIT
 ): Promise<ShopWithSummary[]> {
   const { data, error } = await supabase
     .from('shops_overview')
@@ -104,6 +108,10 @@ export async function searchShops(query: string, limit = 50): Promise<ShopWithSu
 
 export type TopShopsMode = 'rating' | 'value';
 
+/** Mindestanzahl Bewertungen für die Bestenliste – schützt davor, dass ein
+ *  einzelner Fünf-Sterne-Klick einen Laden auf Platz 1 hebt. */
+export const TOP_MIN_RATINGS = 3;
+
 /** Bestenliste: Top-Läden nach Gesamtschnitt oder Preis-Leistung (Sterne pro Euro),
  *  optional auf eine Stadt begrenzt. */
 export async function fetchTopShops(
@@ -111,7 +119,7 @@ export async function fetchTopShops(
   mode: TopShopsMode = 'rating',
   limit = 10
 ): Promise<ShopWithSummary[]> {
-  let query = supabase.from('shops_overview').select('*').gt('rating_count', 0);
+  let query = supabase.from('shops_overview').select('*').gte('rating_count', TOP_MIN_RATINGS);
   if (mode === 'value') {
     query = query
       .not('value_score', 'is', null)
@@ -334,6 +342,16 @@ export async function updateShop(shopId: string, input: NewShopInput) {
   if (error) throw new Error(error.message);
   // Zeiten wurden ggf. korrigiert – das Öffnungszeiten-Feedback beginnt von vorn.
   await supabase.from('hours_votes').delete().eq('shop_id', shopId);
+}
+
+/** Löscht die eigene Bewertung eines Ladens. */
+export async function deleteRating(shopId: string, userId: string) {
+  const { error } = await supabase
+    .from('ratings')
+    .delete()
+    .eq('shop_id', shopId)
+    .eq('user_id', userId);
+  if (error) throw new Error(error.message);
 }
 
 /** Alle eigenen Bewertungen inkl. Ladendaten für die Profil-Übersicht. */

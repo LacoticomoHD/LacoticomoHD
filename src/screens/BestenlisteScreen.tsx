@@ -58,6 +58,17 @@ export function BestenlisteScreen() {
     return { label: t('top.germany').replace('🇩🇪 ', ''), schnitt: Math.round(weighted * 100) / 100, anzahl: total };
   }, [cities, selectedCity]);
 
+  /** Günstigste Städte – der PR-taugliche Teil des Dönerpreis-Index.
+   *  Nur Städte mit mindestens 3 Preisangaben, damit Ausreißer nicht führen. */
+  const cheapestCities = useMemo(
+    () =>
+      cities
+        .filter((c) => c.preis_schnitt != null && c.preis_anzahl >= 3)
+        .sort((a, b) => (a.preis_schnitt ?? 0) - (b.preis_schnitt ?? 0))
+        .slice(0, 5),
+    [cities]
+  );
+
   const share = async () => {
     if (shops.length === 0) return;
     const scope = selectedCity ?? t('top.germany').replace('🇩🇪 ', '');
@@ -166,6 +177,31 @@ export function BestenlisteScreen() {
           <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
             {t('top.priceIndexAvg', { n: preisIndex.anzahl, label: preisIndex.anzahl === 1 ? t('top.priceReport') : t('top.priceReports') })}
           </Text>
+
+          {!selectedCity && cheapestCities.length >= 2 ? (
+            <View style={[styles.cheapList, { borderTopColor: theme.colors.border }]}>
+              <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>
+                {t('top.cheapestCities')}
+              </Text>
+              {cheapestCities.map((c, i) => (
+                <Pressable
+                  key={c.city}
+                  onPress={() => setSelectedCity(c.city)}
+                  style={styles.cheapRow}
+                >
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 13, width: 20 }}>
+                    {i + 1}.
+                  </Text>
+                  <Text style={{ color: theme.colors.text, fontSize: 13, flex: 1 }} numberOfLines={1}>
+                    {c.city}
+                  </Text>
+                  <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '700' }}>
+                    {formatPrice(c.preis_schnitt ?? 0)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -254,6 +290,8 @@ const styles = StyleSheet.create({
   },
   empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
+  cheapList: { borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
+  cheapRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },
   indexCard: {
     alignItems: 'center',
     borderRadius: 16,

@@ -6,6 +6,7 @@ import {
   Animated,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -32,6 +33,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { openDirections, TRAVEL_MODES } from '@/lib/directions';
 import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium, tapSelection } from '@/lib/haptics';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
 import { openStatus } from '@/lib/openingHours';
@@ -102,6 +104,7 @@ export function ShopDetailScreen() {
   const { t, categoryLabel, lang } = useI18n();
   const dateLocale = lang === 'tr' ? 'tr-TR' : lang === 'en' ? 'en-GB' : 'de-DE';
   const { user } = useAuth();
+  const requireAuth = useRequireAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'ShopDetail'>>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { shopId } = route.params;
@@ -147,6 +150,7 @@ export function ShopDetailScreen() {
   );
 
   const toggleFavorite = async () => {
+    if (!requireAuth()) return;
     if (!user || favoriteBusy) return;
     setFavoriteBusy(true);
     const next = !isFavorite;
@@ -169,6 +173,7 @@ export function ShopDetailScreen() {
   };
 
   const voteHours = async (vote: 1 | -1) => {
+    if (!requireAuth()) return;
     if (!user) return;
     const next = myHoursVote === vote ? 0 : vote;
     const previous = myHoursVote;
@@ -179,6 +184,22 @@ export function ShopDetailScreen() {
     } catch (e) {
       setMyHoursVote(previous);
       Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
+    }
+  };
+
+  /** Laden weiterempfehlen – der Link öffnet den Laden direkt in der Web-App. */
+  const shareShop = async () => {
+    if (!shop) return;
+    tapLight();
+    const url = `https://lacoticomohd.github.io/LacoticomoHD/laden/${shop.id}`;
+    const note =
+      summary?.avg_gesamt != null
+        ? t('detail.shareWithRating', { name: shop.name, v: summary.avg_gesamt.toFixed(1) })
+        : t('detail.sharePlain', { name: shop.name });
+    try {
+      await Share.share({ message: `${note}\n${url}`, url });
+    } catch {
+      // Abbruch durch den Nutzer ist kein Fehler.
     }
   };
 
@@ -259,6 +280,7 @@ export function ShopDetailScreen() {
         <Pressable
           onPress={() => {
             tapMedium();
+            if (!requireAuth()) return;
             navigation.navigate('RateShop', {
               shopId: shop.id,
               shopName: shop.name,
@@ -302,6 +324,18 @@ export function ShopDetailScreen() {
           </Animated.Text>
           <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
             {isFavorite ? t('detail.act.saved') : t('detail.act.save')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={shareShop}
+          style={[
+            styles.action,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={styles.actionIcon}>📤</Text>
+          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
+            {t('detail.act.share')}
           </Text>
         </Pressable>
       </View>
@@ -356,14 +390,15 @@ export function ShopDetailScreen() {
         </View>
         {shop.kartenzahlung == null ? (
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              if (!requireAuth()) return;
               navigation.navigate('RateShop', {
                 shopId: shop.id,
                 shopName: shop.name,
                 latitude: shop.latitude,
                 longitude: shop.longitude,
-              })
-            }
+              });
+            }}
           >
             <Text style={{ color: theme.colors.primary, fontSize: 13, marginTop: 8 }}>
               {t('detail.cardUnknownHint')}
@@ -451,7 +486,12 @@ export function ShopDetailScreen() {
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.hours')}</Text>
         {hoursStatus === 'unknown' ? (
-          <Pressable onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}>
+          <Pressable
+            onPress={() => {
+              if (!requireAuth()) return;
+              navigation.navigate('EditShop', { shopId: shop.id });
+            }}
+          >
             <Text style={{ color: theme.colors.primary, fontSize: 14, lineHeight: 20 }}>
               🕐 {t('detail.hoursUnknownHint')}
             </Text>
@@ -504,19 +544,23 @@ export function ShopDetailScreen() {
       <View style={styles.ctaWrap}>
         <Button
           title={t('detail.rateNow')}
-          onPress={() =>
+          onPress={() => {
+            if (!requireAuth()) return;
             navigation.navigate('RateShop', {
               shopId: shop.id,
               shopName: shop.name,
               latitude: shop.latitude,
               longitude: shop.longitude,
-            })
-          }
+            });
+          }}
         />
       </View>
 
       <Pressable
-        onPress={() => navigation.navigate('EditShop', { shopId: shop.id })}
+        onPress={() => {
+          if (!requireAuth()) return;
+          navigation.navigate('EditShop', { shopId: shop.id });
+        }}
         style={styles.reportLink}
       >
         <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
@@ -524,9 +568,10 @@ export function ShopDetailScreen() {
         </Text>
       </Pressable>
       <Pressable
-        onPress={() =>
-          navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name })
-        }
+        onPress={() => {
+          if (!requireAuth()) return;
+          navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name });
+        }}
         style={styles.reportLink}
       >
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
@@ -546,7 +591,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   actionIcon: { fontSize: 18, marginBottom: 2 },
-  actionLabel: { fontSize: 12, fontWeight: '700' },
+  actionLabel: { fontSize: 11, fontWeight: '700' },
   actionRow: {
     flexDirection: 'row',
     gap: 8,

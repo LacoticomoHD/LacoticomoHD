@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -22,11 +23,19 @@ import { useTheme } from '@/theme/ThemeContext';
 export function AuthScreen() {
   const { theme } = useTheme();
   const { t } = useI18n();
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, session } = useAuth();
+  const navigation = useNavigation();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Wurde die Anmeldung als Overlay geöffnet (Gast wollte etwas bewerten),
+  // schließt sie sich nach erfolgreichem Login automatisch wieder.
+  const canClose = navigation.canGoBack();
+  useEffect(() => {
+    if (session && canClose) navigation.goBack();
+  }, [session, canClose, navigation]);
 
   const submit = async () => {
     if (!email.trim() || !password) {
@@ -114,6 +123,14 @@ export function AuthScreen() {
             <Pressable onPress={forgotPassword}>
               <Text style={[styles.forgotText, { color: theme.colors.textSecondary }]}>
                 {t('auth.forgot')}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {canClose ? (
+            <Pressable onPress={() => navigation.goBack()}>
+              <Text style={[styles.forgotText, { color: theme.colors.textSecondary }]}>
+                {t('auth.continueAsGuest')}
               </Text>
             </Pressable>
           ) : null}

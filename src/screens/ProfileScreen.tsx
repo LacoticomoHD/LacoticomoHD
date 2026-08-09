@@ -90,10 +90,21 @@ export function ProfileScreen() {
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
           {t('profile.account')}
         </Text>
-        <Text style={{ color: theme.colors.textSecondary }}>{t('profile.loggedInAs')}</Text>
-        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: 2 }}>
-          {user?.email}
-        </Text>
+        {user ? (
+          <>
+            <Text style={{ color: theme.colors.textSecondary }}>{t('profile.loggedInAs')}</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: 2 }}>
+              {user.email}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={{ color: theme.colors.textSecondary, marginBottom: 12 }}>
+              {t('profile.guestHint')}
+            </Text>
+            <Button title={t('profile.guestLogin')} onPress={() => navigation.navigate('Auth')} />
+          </>
+        )}
       </View>
 
       <View
@@ -151,6 +162,7 @@ export function ProfileScreen() {
         </Text>
       </View>
 
+      {user ? (
       <View
         style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
       >
@@ -185,6 +197,7 @@ export function ProfileScreen() {
               : ''}
         </Text>
       </View>
+      ) : null}
 
       {isAdmin ? (
         <Pressable
@@ -201,6 +214,8 @@ export function ProfileScreen() {
         </Pressable>
       ) : null}
 
+      {user ? (
+      <>
       <Pressable
         onPress={() => navigation.navigate('Favorites')}
         style={[
@@ -222,6 +237,8 @@ export function ProfileScreen() {
         <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.myRatings')}</Text>
         <Text style={{ color: theme.colors.textSecondary }}>›</Text>
       </Pressable>
+      </>
+      ) : null}
 
       <Pressable
         onPress={() => navigation.navigate('Legal')}
@@ -234,13 +251,17 @@ export function ProfileScreen() {
         <Text style={{ color: theme.colors.textSecondary }}>›</Text>
       </Pressable>
 
-      <Button title={t('profile.logout')} onPress={confirmSignOut} variant="danger" />
+      {user ? (
+        <>
+          <Button title={t('profile.logout')} onPress={confirmSignOut} variant="danger" />
 
-      <Pressable onPress={confirmDeleteAccount} disabled={deleting} style={styles.deleteLink}>
-        <Text style={{ color: theme.colors.danger, fontSize: 13 }}>
-          {deleting ? t('profile.deleting') : t('profile.deleteAccount')}
-        </Text>
-      </Pressable>
+          <Pressable onPress={confirmDeleteAccount} disabled={deleting} style={styles.deleteLink}>
+            <Text style={{ color: theme.colors.danger, fontSize: 13 }}>
+              {deleting ? t('profile.deleting') : t('profile.deleteAccount')}
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
     </ScrollView>
   );
 }

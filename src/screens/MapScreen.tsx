@@ -24,9 +24,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
 import { useI18n } from '@/i18n/I18nContext';
-import { fetchShopsInBounds, geocodeAddress } from '@/lib/api';
+import { BOUNDS_LIMIT, fetchShopsInBounds, geocodeAddress } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium } from '@/lib/haptics';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
@@ -94,6 +95,8 @@ export function MapScreen() {
   });
   const { matchesFilters } = useFilters();
   const { t } = useI18n();
+  const requireAuth = useRequireAuth();
+  const [truncated, setTruncated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
 
@@ -113,9 +116,12 @@ export function MapScreen() {
       // Bei sehr weitem Zoom (halb Deutschland sichtbar) nicht laden – erst reinzoomen.
       if (bounds.maxLat - bounds.minLat > 3.5) {
         setShops([]);
+        setTruncated(false);
         return;
       }
-      setShops(await fetchShopsInBounds(bounds));
+      const found = await fetchShopsInBounds(bounds);
+      setShops(found);
+      setTruncated(found.length >= BOUNDS_LIMIT);
     } catch (e) {
       const msg = formatLoadError(e);
       if (msg) Alert.alert(t('common.loadError'), msg);
@@ -164,6 +170,7 @@ export function MapScreen() {
         properties: {
           id: shop.id,
           open: isOpenNow(shop.opening_hours ?? {}),
+          rated: (shop.summary?.rating_count ?? 0) > 0,
         },
       })),
     }),
@@ -243,7 +250,9 @@ export function MapScreen() {
             id="shop-markers"
             style={{
               iconImage: ['case', ['get', 'open'], 'pin-open', 'pin-closed'],
-              iconSize: 0.16,
+              // Noch unbewertete Läden treten optisch zurück.
+              iconSize: ['case', ['get', 'rated'], 0.17, 0.12],
+              iconOpacity: ['case', ['get', 'rated'], 1, 0.7],
               iconAnchor: 'bottom',
               iconAllowOverlap: true,
               iconIgnorePlacement: true,
@@ -279,6 +288,16 @@ export function MapScreen() {
           ) : null}
         </View>
         <FilterBar />
+        {truncated ? (
+          <Text
+            style={[
+              styles.truncatedHint,
+              { backgroundColor: theme.colors.surface, color: theme.colors.textSecondary },
+            ]}
+          >
+            {t('map.tooMany')}
+          </Text>
+        ) : null}
       </View>
 
       {/* OSM-Attribution ist lizenzrechtlich Pflicht. */}
@@ -302,7 +321,10 @@ export function MapScreen() {
 
       <Pressable
         onPressIn={tapMedium}
-        onPress={() => navigation.navigate('AddShop')}
+        onPress={() => {
+          if (!requireAuth()) return;
+          navigation.navigate('AddShop');
+        }}
         style={({ pressed }) => [
           styles.fab,
           styles.addFab,
@@ -358,5 +380,15 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   searchInput: { flex: 1, fontSize: 15, padding: 0 },
+  truncatedHint: {
+    borderRadius: 10,
+    fontSize: 12,
+    marginHorizontal: 8,
+    marginTop: 6,
+    opacity: 0.95,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   topOverlay: { left: 0, position: 'absolute', right: 0, top: 8 },
 });

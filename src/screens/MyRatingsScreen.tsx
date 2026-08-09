@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { StarRating } from '@/components/StarRating';
-import { fetchMyRatings } from '@/lib/api';
+import { deleteRating, fetchMyRatings } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
@@ -27,6 +27,25 @@ export function MyRatingsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [ratings, setRatings] = useState<RatingWithShop[]>([]);
+
+  const confirmDelete = (item: RatingWithShop) => {
+    if (!user || !item.shops) return;
+    Alert.alert(t('myratings.deleteTitle'), t('myratings.deleteBody', { name: item.shops.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('myratings.deleteYes'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteRating(item.shop_id, user.id);
+            setRatings((prev) => prev.filter((r) => r.id !== item.id));
+          } catch (e) {
+            Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
+          }
+        },
+      },
+    ]);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -71,9 +90,14 @@ export function MyRatingsScreen() {
               </Text>
               <View style={styles.cardFooter}>
                 <StarRating value={avg} size={16} />
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13, flex: 1 }}>
                   {t('myratings.yourAvg', { v: avg.toFixed(1) })}
                 </Text>
+                <Pressable onPress={() => confirmDelete(item)} hitSlop={8}>
+                  <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
+                    {t('myratings.delete')}
+                  </Text>
+                </Pressable>
               </View>
             </Pressable>
           );

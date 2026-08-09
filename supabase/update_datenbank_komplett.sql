@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v12), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v13), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -92,6 +92,18 @@ create table if not exists public.hours_votes (
   primary key (shop_id, user_id)
 );
 
+-- Änderungshistorie: Wer hat wann was an einem Laden geändert? Ermöglicht das
+-- Zurückrollen von Vandalismus (offenes Bearbeiten bleibt erlaubt).
+create table if not exists public.shop_edits (
+  id         uuid primary key default gen_random_uuid(),
+  shop_id    uuid not null references public.shops (id) on delete cascade,
+  user_id    uuid references auth.users (id) on delete set null,
+  changed_at timestamptz not null default now(),
+  vorher     jsonb,
+  nachher    jsonb
+);
+create index if not exists shop_edits_shop_idx on public.shop_edits (shop_id, changed_at desc);
+
 -- Besonderheiten-Liste auch in der (ggf. schon vorhandenen) Abstimmungs-Tabelle aktualisieren
 alter table public.shop_feature_votes drop constraint if exists shop_feature_votes_feature_check;
 alter table public.shop_feature_votes add constraint shop_feature_votes_feature_check check (
@@ -114,6 +126,17 @@ drop view if exists public.shop_rating_summary;
 drop view if exists public.shop_feature_summary;
 drop view if exists public.hours_vote_summary;
 drop view if exists public.city_stats;
+drop view if exists public.shop_closure_reports;
+
+-- Zählt Meldungen "dauerhaft geschlossen" je Laden (nur die Anzahl, keine
+-- Details). Bewusst OHNE security_invoker: Die Ansicht läuft mit den Rechten
+-- des Eigentümers, damit jeder Nutzer die Gesamtzahl sieht – die Meldungen
+-- selbst bleiben durch RLS geschützt.
+create view public.shop_closure_reports as
+select shop_id, count(distinct user_id)::int as meldungen
+from public.reports
+where reason = 'dauerhaft_geschlossen' and status = 'offen'
+group by shop_id;
 
 create view public.shop_rating_summary
 with (security_invoker = true) as
@@ -200,7 +223,20 @@ left join (
   from public.shop_feature_summary
   where score > 0
   group by shop_id
-) fs on fs.shop_id = s.id;
+) fs on fs.shop_id = s.id
+left join public.shop_closure_reports cr on cr.shop_id = s.id
+-- Ab 3 unabhängigen "dauerhaft geschlossen"-Meldungen wird der Laden aus
+-- Karte und Liste ausgeblendet (nicht gelöscht) – so bleibt die Moderation
+-- auch ohne tägliche Kontrolle beherrschbar.
+where coalesce(cr.meldungen, 0) < 3;
+
+-- Lesezugriff für Gäste (ohne Anmeldung) und angemeldete Nutzer
+grant select on public.shops_overview        to anon, authenticated;
+grant select on public.shop_rating_summary   to anon, authenticated;
+grant select on public.shop_feature_summary  to anon, authenticated;
+grant select on public.hours_vote_summary    to anon, authenticated;
+grant select on public.city_stats            to anon, authenticated;
+grant select on public.shop_closure_reports  to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4) Funktionen und Trigger
@@ -242,6 +278,27 @@ create trigger shops_price_log
   after insert or update of doener_preis on public.shops
   for each row execute function public.log_price_change();
 
+-- Jede Änderung an einem Laden protokollieren (für Rückrollen bei Vandalismus)
+create or replace function public.log_shop_edit()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if to_jsonb(new) is distinct from to_jsonb(old) then
+    insert into public.shop_edits (shop_id, user_id, vorher, nachher)
+    values (new.id, auth.uid(), to_jsonb(old), to_jsonb(new));
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists shops_edit_log on public.shops;
+create trigger shops_edit_log
+  after update on public.shops
+  for each row execute function public.log_shop_edit();
+
 -- ---------------------------------------------------------------------------
 -- 5) Row-Level-Security: alle Regeln auf den aktuellen Stand
 -- ---------------------------------------------------------------------------
@@ -253,6 +310,7 @@ alter table public.shop_feature_votes enable row level security;
 alter table public.app_admins         enable row level security;
 alter table public.price_history      enable row level security;
 alter table public.hours_votes        enable row level security;
+alter table public.shop_edits         enable row level security;
 
 -- Shops
 drop policy if exists "shops_select"     on public.shops;
@@ -261,7 +319,7 @@ drop policy if exists "shops_update_own" on public.shops;
 drop policy if exists "shops_update_any" on public.shops;
 drop policy if exists "shops_delete_own" on public.shops;
 create policy "shops_select" on public.shops
-  for select to authenticated using (true);
+  for select to anon, authenticated using (true);
 create policy "shops_insert" on public.shops
   for insert to authenticated with check (created_by = auth.uid());
 create policy "shops_update_any" on public.shops
@@ -275,7 +333,7 @@ drop policy if exists "ratings_insert_own" on public.ratings;
 drop policy if exists "ratings_update_own" on public.ratings;
 drop policy if exists "ratings_delete_own" on public.ratings;
 create policy "ratings_select" on public.ratings
-  for select to authenticated using (true);
+  for select to anon, authenticated using (true);
 create policy "ratings_insert_own" on public.ratings
   for insert to authenticated with check (user_id = auth.uid());
 create policy "ratings_update_own" on public.ratings
@@ -318,7 +376,7 @@ drop policy if exists "feature_votes_insert_own" on public.shop_feature_votes;
 drop policy if exists "feature_votes_update_own" on public.shop_feature_votes;
 drop policy if exists "feature_votes_delete_own" on public.shop_feature_votes;
 create policy "feature_votes_select" on public.shop_feature_votes
-  for select to authenticated using (true);
+  for select to anon, authenticated using (true);
 create policy "feature_votes_insert_own" on public.shop_feature_votes
   for insert to authenticated with check (
     user_id = auth.uid()
@@ -337,10 +395,17 @@ drop policy if exists "admins_select_self" on public.app_admins;
 create policy "admins_select_self" on public.app_admins
   for select to authenticated using (user_id = auth.uid());
 
+-- Änderungshistorie: nur Admins dürfen sie einsehen
+drop policy if exists "shop_edits_select_admin" on public.shop_edits;
+create policy "shop_edits_select_admin" on public.shop_edits
+  for select to authenticated using (
+    exists (select 1 from public.app_admins a where a.user_id = auth.uid())
+  );
+
 -- Preis-Historie
 drop policy if exists "price_history_select" on public.price_history;
 create policy "price_history_select" on public.price_history
-  for select to authenticated using (true);
+  for select to anon, authenticated using (true);
 
 -- Öffnungszeiten-Feedback
 drop policy if exists "hours_votes_select"       on public.hours_votes;
@@ -349,7 +414,7 @@ drop policy if exists "hours_votes_update_own"   on public.hours_votes;
 drop policy if exists "hours_votes_delete_own"   on public.hours_votes;
 drop policy if exists "hours_votes_delete_owner" on public.hours_votes;
 create policy "hours_votes_select" on public.hours_votes
-  for select to authenticated using (true);
+  for select to anon, authenticated using (true);
 create policy "hours_votes_insert_own" on public.hours_votes
   for insert to authenticated with check (user_id = auth.uid());
 create policy "hours_votes_update_own" on public.hours_votes

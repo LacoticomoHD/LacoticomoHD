@@ -4,6 +4,7 @@ import {
   DarkTheme as NavDarkTheme,
   DefaultTheme as NavLightTheme,
   NavigationContainer,
+  type LinkingOptions,
 } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -30,6 +31,25 @@ import type { RootStackParamList, TabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+/** Direktlinks: Ein geteilter Laden öffnet sich sofort im richtigen Bildschirm –
+ *  im Web als /laden/<id>, in der App über dondoener://laden/<id>. */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['dondoener://', 'https://lacoticomohd.github.io/LacoticomoHD'],
+  config: {
+    screens: {
+      Tabs: {
+        screens: { Karte: '', Liste: 'liste', Top10: 'top10', Profil: 'profil' },
+      },
+      Auth: 'anmelden',
+      ShopDetail: 'laden/:shopId',
+      RateShop: 'laden/:shopId/bewerten',
+      Favorites: 'favoriten',
+      MyRatings: 'meine-bewertungen',
+      Legal: 'rechtliches',
+    },
+  },
+};
 
 const TAB_ICONS: Record<keyof TabParamList, string> = {
   Karte: '🗺️',
@@ -73,7 +93,7 @@ function Tabs() {
 export function RootNavigator() {
   const { theme } = useTheme();
   const { t } = useI18n();
-  const { session, loading, passwordRecovery } = useAuth();
+  const { loading, passwordRecovery } = useAuth();
 
   const navTheme = theme.dark
     ? {
@@ -115,14 +135,21 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} linking={linking}>
       {passwordRecovery ? (
         // Kommt der Nutzer über den Link aus der Passwort-vergessen-Mail,
         // muss zuerst ein neues Passwort gesetzt werden.
         <ResetPasswordScreen />
-      ) : session ? (
+      ) : (
+        // Karte, Liste und Ladendetails sind auch ohne Konto sichtbar.
+        // Erst Aktionen (Bewerten, Eintragen, Merken) verlangen eine Anmeldung.
         <Stack.Navigator>
           <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="Auth"
+            component={AuthScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
           <Stack.Screen
             name="ShopDetail"
             component={ShopDetailScreen}
@@ -169,8 +196,6 @@ export function RootNavigator() {
             options={{ title: t('nav.legal') }}
           />
         </Stack.Navigator>
-      ) : (
-        <AuthScreen />
       )}
     </NavigationContainer>
   );
