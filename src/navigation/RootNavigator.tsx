@@ -4,8 +4,11 @@ import {
   DarkTheme as NavDarkTheme,
   DefaultTheme as NavLightTheme,
   NavigationContainer,
+  getPathFromState as defaultGetPathFromState,
+  getStateFromPath as defaultGetStateFromPath,
   type LinkingOptions,
 } from '@react-navigation/native';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -34,6 +37,11 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 /** Direktlinks: Ein geteilter Laden öffnet sich sofort im richtigen Bildschirm –
  *  im Web als /laden/<id>, in der App über dondoener://laden/<id>. */
+// Die Web-App liegt unter /LacoticomoHD. React Navigation schneidet diesen
+// Basis-Pfad im Browser NICHT selbst ab – ohne das Abschneiden würde jeder
+// Direktlink auf der Karte landen statt beim gewünschten Laden.
+const BASE_PATH = '/LacoticomoHD';
+
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['dondoener://', 'https://lacoticomohd.github.io/LacoticomoHD'],
   config: {
@@ -48,6 +56,17 @@ const linking: LinkingOptions<RootStackParamList> = {
       MyRatings: 'meine-bewertungen',
       Legal: 'rechtliches',
     },
+  },
+  getStateFromPath: (path, options) => {
+    const cleaned =
+      Platform.OS === 'web' && path.startsWith(BASE_PATH)
+        ? path.slice(BASE_PATH.length) || '/'
+        : path;
+    return defaultGetStateFromPath(cleaned, options);
+  },
+  getPathFromState: (state, options) => {
+    const path = defaultGetPathFromState(state, options);
+    return Platform.OS === 'web' ? `${BASE_PATH}${path}` : path;
   },
 };
 
