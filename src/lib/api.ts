@@ -119,9 +119,10 @@ export const TOP_MIN_RATINGS = 3;
 export async function fetchTopShops(
   city: string | null,
   mode: TopShopsMode = 'rating',
-  limit = 10
+  limit = 10,
+  minRatings = TOP_MIN_RATINGS
 ): Promise<ShopWithSummary[]> {
-  let query = supabase.from('shops_overview').select('*').gte('rating_count', TOP_MIN_RATINGS);
+  let query = supabase.from('shops_overview').select('*').gte('rating_count', minRatings);
   if (mode === 'value') {
     query = query
       .not('value_score', 'is', null)

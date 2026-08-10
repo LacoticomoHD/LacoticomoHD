@@ -13,7 +13,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { StarRating } from '@/components/StarRating';
-import { fetchCityStats, fetchTopShops, TopShopsMode } from '@/lib/api';
+import { fetchCityStats, fetchTopShops, TOP_MIN_RATINGS, TopShopsMode } from '@/lib/api';
 import { formatPrice } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
@@ -30,6 +30,9 @@ export function BestenlisteScreen() {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [mode, setMode] = useState<TopShopsMode>('rating');
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
+  // Solange es noch keine Läden mit genügend Bewertungen gibt, zeigen wir
+  // ersatzweise die schon bewerteten – klar als vorläufig gekennzeichnet.
+  const [provisional, setProvisional] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,7 +40,16 @@ export function BestenlisteScreen() {
         .then(setCities)
         .catch(() => {});
       fetchTopShops(selectedCity, mode)
-        .then(setShops)
+        .then(async (strict) => {
+          if (strict.length > 0) {
+            setShops(strict);
+            setProvisional(false);
+            return;
+          }
+          const fallback = await fetchTopShops(selectedCity, mode, 10, 1);
+          setShops(fallback);
+          setProvisional(fallback.length > 0);
+        })
         .catch((e: Error) => Alert.alert(t('common.loadError'), e.message));
     }, [selectedCity, mode])
   );
@@ -160,6 +172,17 @@ export function BestenlisteScreen() {
           </Text>
         </Pressable>
       </View>
+
+      {provisional ? (
+        <Text
+          style={[
+            styles.provisionalNote,
+            { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.textSecondary },
+          ]}
+        >
+          {t('top.provisional', { n: TOP_MIN_RATINGS })}
+        </Text>
+      ) : null}
 
       {preisIndex ? (
         <View
@@ -292,6 +315,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   cheapList: { borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
   cheapRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  provisionalNote: {
+    borderRadius: 12,
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginBottom: 4,
+    marginHorizontal: 16,
+    padding: 10,
+  },
   indexCard: {
     alignItems: 'center',
     borderRadius: 16,
