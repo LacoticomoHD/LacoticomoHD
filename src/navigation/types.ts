@@ -11,6 +11,7 @@ export type RootStackParamList = {
   MyRatings: undefined;
   Favorites: undefined;
   ReportsInbox: undefined;
+  ShopEdits: undefined;
   Legal: undefined;
 };
 

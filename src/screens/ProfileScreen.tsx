@@ -214,6 +214,21 @@ export function ProfileScreen() {
         </Pressable>
       ) : null}
 
+      {isAdmin ? (
+        <Pressable
+          onPress={() => navigation.navigate('ShopEdits')}
+          style={[
+            styles.legalLink,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
+            {t('profile.editsAdmin')}
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary }}>›</Text>
+        </Pressable>
+      ) : null}
+
       {user ? (
       <>
       <Pressable

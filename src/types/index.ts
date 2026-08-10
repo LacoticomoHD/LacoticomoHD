@@ -190,6 +190,31 @@ export interface ReportWithShop {
   shops: Pick<Shop, 'id' | 'name' | 'address'> | null;
 }
 
+/** Felder eines Ladens, die per Bearbeiten geändert werden können. */
+export const EDITABLE_SHOP_FIELDS = [
+  'name',
+  'address',
+  'latitude',
+  'longitude',
+  'opening_hours',
+  'features',
+  'doener_preis',
+  'dueruem_preis',
+  'city',
+  'kartenzahlung',
+] as const;
+
+/** Protokollierte Änderung an einem Laden (Tabelle shop_edits, nur für Admins). */
+export interface ShopEdit {
+  id: string;
+  shop_id: string;
+  user_id: string | null;
+  changed_at: string;
+  vorher: Record<string, unknown> | null;
+  nachher: Record<string, unknown> | null;
+  shops: Pick<Shop, 'id' | 'name'> | null;
+}
+
 /** Eintrag der Dönerpreis-Historie. */
 export interface PriceHistoryEntry {
   id: string;

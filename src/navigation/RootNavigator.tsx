@@ -26,6 +26,7 @@ import { ReportShopScreen } from '@/screens/ReportShopScreen';
 import { ReportsInboxScreen } from '@/screens/ReportsInboxScreen';
 import { ResetPasswordScreen } from '@/screens/ResetPasswordScreen';
 import { ShopDetailScreen } from '@/screens/ShopDetailScreen';
+import { ShopEditsScreen } from '@/screens/ShopEditsScreen';
 import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
 import { useTheme } from '@/theme/ThemeContext';
@@ -208,6 +209,11 @@ export function RootNavigator() {
             name="ReportsInbox"
             component={ReportsInboxScreen}
             options={{ title: t('nav.reports') }}
+          />
+          <Stack.Screen
+            name="ShopEdits"
+            component={ShopEditsScreen}
+            options={{ title: t('nav.edits') }}
           />
           <Stack.Screen
             name="Legal"

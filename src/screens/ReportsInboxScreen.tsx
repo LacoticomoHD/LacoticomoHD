@@ -3,7 +3,7 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { fetchAllReports, setReportStatus } from '@/lib/api';
+import { AUTO_HIDE_REPORTS, fetchAllReports, fetchClosureReportCounts, setReportStatus } from '@/lib/api';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -16,12 +16,14 @@ export function ReportsInboxScreen() {
   const dateLocale = lang === 'tr' ? 'tr-TR' : lang === 'en' ? 'en-GB' : 'de-DE';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [reports, setReports] = useState<ReportWithShop[]>([]);
+  const [hiddenCounts, setHiddenCounts] = useState<Map<string, number>>(new Map());
 
   useFocusEffect(
     useCallback(() => {
       fetchAllReports()
         .then(setReports)
         .catch((e: Error) => Alert.alert(t('common.error'), e.message));
+      fetchClosureReportCounts().then(setHiddenCounts).catch(() => {});
     }, [])
   );
 
@@ -32,6 +34,7 @@ export function ReportsInboxScreen() {
       setReports((prev) =>
         prev.map((r) => (r.id === report.id ? { ...r, status: next } : r))
       );
+      setHiddenCounts(await fetchClosureReportCounts());
     } catch (e) {
       Alert.alert(t('common.error'), e instanceof Error ? e.message : t('common.error'));
     }
@@ -80,6 +83,11 @@ export function ReportsInboxScreen() {
                 <Text style={{ color: theme.colors.text, fontSize: 14 }} numberOfLines={1}>
                   {item.shops?.name ?? t('inbox.deletedShop')}
                 </Text>
+                {(hiddenCounts.get(item.shop_id) ?? 0) >= AUTO_HIDE_REPORTS ? (
+                  <Text style={{ color: theme.colors.danger, fontSize: 12, fontWeight: '700', marginTop: 2 }}>
+                    {t('inbox.autoHidden', { n: hiddenCounts.get(item.shop_id) ?? 0 })}
+                  </Text>
+                ) : null}
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
                   {item.shops?.address ?? ''}
                 </Text>

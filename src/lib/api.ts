@@ -1,5 +1,6 @@
 import {
   CityStats,
+  EDITABLE_SHOP_FIELDS,
   FeatureVote,
   GeoBounds,
   HoursVoteSummary,
@@ -11,6 +12,7 @@ import {
   ReportWithShop,
   Shop,
   ShopFeature,
+  ShopEdit,
   ShopFeatureSummary,
   ShopRatingSummary,
   ShopWithSummary,
@@ -418,6 +420,47 @@ export async function setReportStatus(reportId: string, status: 'offen' | 'erled
   const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// Admin: Änderungshistorie und ausgeblendete Läden
+// ---------------------------------------------------------------------------
+
+/** Letzte Änderungen an Läden – per RLS nur für Admins sichtbar. */
+export async function fetchRecentShopEdits(limit = 50): Promise<ShopEdit[]> {
+  const { data, error } = await supabase
+    .from('shop_edits')
+    .select('id, shop_id, user_id, changed_at, vorher, nachher, shops(id, name)')
+    .order('changed_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data as unknown as ShopEdit[];
+}
+
+/** Setzt einen Laden auf den Stand vor einer Änderung zurück. */
+export async function restoreShopEdit(edit: ShopEdit) {
+  if (!edit.vorher) throw new Error('Kein früherer Stand gespeichert.');
+  const before = edit.vorher;
+  const patch: Record<string, unknown> = {};
+  for (const field of EDITABLE_SHOP_FIELDS) {
+    if (field in before) patch[field] = before[field];
+  }
+  const { error } = await supabase.from('shops').update(patch).eq('id', edit.shop_id);
+  if (error) throw new Error(error.message);
+}
+
+/** Läden, die wegen Meldungen automatisch ausgeblendet sind: shop_id → Anzahl. */
+export async function fetchClosureReportCounts(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('shop_closure_reports').select('*');
+  if (error) return new Map();
+  const map = new Map<string, number>();
+  for (const row of data as { shop_id: string; meldungen: number }[]) {
+    map.set(row.shop_id, row.meldungen);
+  }
+  return map;
+}
+
+/** Ab wie vielen Meldungen ein Laden automatisch ausgeblendet wird (wie in der DB). */
+export const AUTO_HIDE_REPORTS = 3;
 
 // ---------------------------------------------------------------------------
 // Preis-Frischehalter: Community bestätigt oder korrigiert den Dönerpreis
