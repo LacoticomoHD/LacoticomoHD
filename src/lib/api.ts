@@ -449,15 +449,12 @@ export async function restoreShopEdit(edit: ShopEdit) {
   if (error) throw new Error(error.message);
 }
 
-/** Läden, die wegen Meldungen automatisch ausgeblendet sind: shop_id → Anzahl. */
-export async function fetchClosureReportCounts(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('shop_closure_reports').select('*');
-  if (error) return new Map();
-  const map = new Map<string, number>();
-  for (const row of data as { shop_id: string; meldungen: number }[]) {
-    map.set(row.shop_id, row.meldungen);
-  }
-  return map;
+/** Läden, die wegen 3+ Meldungen "dauerhaft geschlossen" automatisch
+ *  ausgeblendet sind. Das Kennzeichen pflegt die Datenbank per Trigger. */
+export async function fetchHiddenShopIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('shops').select('id').eq('ausgeblendet', true);
+  if (error) return new Set();
+  return new Set((data as { id: string }[]).map((r) => r.id));
 }
 
 /** Ab wie vielen Meldungen ein Laden automatisch ausgeblendet wird (wie in der DB). */

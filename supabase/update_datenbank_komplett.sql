@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v13), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v14), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -14,6 +14,8 @@ alter table public.shops   add column if not exists dueruem_preis numeric(5, 2);
 alter table public.shops   add column if not exists city          text;
 alter table public.shops   add column if not exists preis_bestaetigt_am timestamptz;
 alter table public.shops   add column if not exists kartenzahlung boolean;
+-- Automatisch ausgeblendet ab 3 Meldungen "dauerhaft geschlossen" (Trigger unten)
+alter table public.shops   add column if not exists ausgeblendet  boolean not null default false;
 alter table public.ratings add column if not exists verified      boolean not null default false;
 alter table public.reports add column if not exists status        text not null default 'offen';
 
@@ -128,16 +130,6 @@ drop view if exists public.hours_vote_summary;
 drop view if exists public.city_stats;
 drop view if exists public.shop_closure_reports;
 
--- Zählt Meldungen "dauerhaft geschlossen" je Laden (nur die Anzahl, keine
--- Details). Bewusst OHNE security_invoker: Die Ansicht läuft mit den Rechten
--- des Eigentümers, damit jeder Nutzer die Gesamtzahl sieht – die Meldungen
--- selbst bleiben durch RLS geschützt.
-create view public.shop_closure_reports as
-select shop_id, count(distinct user_id)::int as meldungen
-from public.reports
-where reason = 'dauerhaft_geschlossen' and status = 'offen'
-group by shop_id;
-
 create view public.shop_rating_summary
 with (security_invoker = true) as
 select
@@ -224,11 +216,10 @@ left join (
   where score > 0
   group by shop_id
 ) fs on fs.shop_id = s.id
-left join public.shop_closure_reports cr on cr.shop_id = s.id
 -- Ab 3 unabhängigen "dauerhaft geschlossen"-Meldungen wird der Laden aus
--- Karte und Liste ausgeblendet (nicht gelöscht) – so bleibt die Moderation
--- auch ohne tägliche Kontrolle beherrschbar.
-where coalesce(cr.meldungen, 0) < 3;
+-- Karte und Liste ausgeblendet (nicht gelöscht) – das Kennzeichen pflegt der
+-- Trigger reports_hidden_sync weiter unten.
+where not s.ausgeblendet;
 
 -- Lesezugriff für Gäste (ohne Anmeldung) und angemeldete Nutzer
 grant select on public.shops_overview        to anon, authenticated;
@@ -236,7 +227,6 @@ grant select on public.shop_rating_summary   to anon, authenticated;
 grant select on public.shop_feature_summary  to anon, authenticated;
 grant select on public.hours_vote_summary    to anon, authenticated;
 grant select on public.city_stats            to anon, authenticated;
-grant select on public.shop_closure_reports  to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4) Funktionen und Trigger
@@ -286,13 +276,56 @@ security definer
 set search_path = ''
 as $$
 begin
-  if to_jsonb(new) is distinct from to_jsonb(old) then
+  -- Nur echte Inhaltsänderungen protokollieren, damit automatische Anpassungen
+  -- (Ausblenden, Preisbestätigung) die Historie nicht zumüllen.
+  if (new.name, new.address, new.latitude, new.longitude, new.opening_hours,
+      new.features, new.doener_preis, new.dueruem_preis, new.city, new.kartenzahlung)
+     is distinct from
+     (old.name, old.address, old.latitude, old.longitude, old.opening_hours,
+      old.features, old.doener_preis, old.dueruem_preis, old.city, old.kartenzahlung)
+  then
     insert into public.shop_edits (shop_id, user_id, vorher, nachher)
     values (new.id, auth.uid(), to_jsonb(old), to_jsonb(new));
   end if;
   return new;
 end;
 $$;
+
+-- Kennzeichen "ausgeblendet" pflegen (ab 3 unabhängigen Schließungs-Meldungen)
+create or replace function public.refresh_shop_hidden()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  sid uuid;
+begin
+  sid := coalesce(new.shop_id, old.shop_id);
+  update public.shops s
+     set ausgeblendet = (
+       select count(distinct r.user_id) >= 3
+       from public.reports r
+       where r.shop_id = sid
+         and r.reason = 'dauerhaft_geschlossen'
+         and r.status = 'offen'
+     )
+   where s.id = sid;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists reports_hidden_sync on public.reports;
+create trigger reports_hidden_sync
+  after insert or update or delete on public.reports
+  for each row execute function public.refresh_shop_hidden();
+
+-- Trigger-Funktionen sollen nicht als API-Endpunkt aufrufbar sein
+revoke execute on function public.log_price_change()    from public, anon, authenticated;
+revoke execute on function public.log_shop_edit()       from public, anon, authenticated;
+revoke execute on function public.refresh_shop_hidden() from public, anon, authenticated;
+
+create index if not exists shops_ausgeblendet_idx on public.shops (ausgeblendet) where ausgeblendet;
 
 drop trigger if exists shops_edit_log on public.shops;
 create trigger shops_edit_log
