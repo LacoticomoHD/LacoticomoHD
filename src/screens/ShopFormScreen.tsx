@@ -21,13 +21,21 @@ import {
   fetchShopsInBounds,
   geocodeAddress,
   GeocodingResult,
+  saveFeatureVotes,
   updateShop,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
-import { OpeningHours, ShopFeature, WEEKDAYS, Weekday } from '@/types';
+import {
+  OpeningHours,
+  SHOP_FEATURE_ICONS,
+  SHOP_FEATURES,
+  ShopFeature,
+  WEEKDAYS,
+  Weekday,
+} from '@/types';
 
 const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -54,7 +62,7 @@ function normalizeName(name: string): string {
 /** Formular für "Laden anlegen" (Route AddShop) und "Laden bearbeiten" (Route EditShop). */
 export function ShopFormScreen() {
   const { theme } = useTheme();
-  const { t, weekdayLabel } = useI18n();
+  const { t, weekdayLabel, featureLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'AddShop' | 'EditShop'>>();
   const navigation = useNavigation();
@@ -83,9 +91,12 @@ export function ShopFormScreen() {
   const [addressQuery, setAddressQuery] = useState('');
   const [geoResults, setGeoResults] = useState<GeocodingResult[]>([]);
   const [selected, setSelected] = useState<GeocodingResult | null>(null);
-  // Besonderheiten werden nicht mehr hier gepflegt, sondern von der Community
-  // beim Bewerten abgestimmt. Bestehende Werte bleiben beim Bearbeiten unangetastet.
+  // Was hier angekreuzt wird, zählt als eigene Stimme in der Community-
+  // Abstimmung – nicht als gesetzte Tatsache. So kann niemand einem Laden im
+  // Alleingang Merkmale verpassen, aber wer ihn einträgt, muss nichts leer lassen.
   const [features, setFeatures] = useState<ShopFeature[]>([]);
+  const [grossText, setGrossText] = useState('');
+  const [menueText, setMenueText] = useState('');
   const [days, setDays] = useState<Record<Weekday, DayInput>>(emptyDays());
   const [busy, setBusy] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -97,6 +108,10 @@ export function ShopFormScreen() {
       .then((shop) => {
         setName(shop.name);
         setPriceText(shop.doener_preis != null ? shop.doener_preis.toFixed(2).replace('.', ',') : '');
+        setGrossText(
+          shop.doener_gross_preis != null ? shop.doener_gross_preis.toFixed(2).replace('.', ',') : ''
+        );
+        setMenueText(shop.menue_preis != null ? shop.menue_preis.toFixed(2).replace('.', ',') : '');
         setDueruemText(
           shop.dueruem_preis != null ? shop.dueruem_preis.toFixed(2).replace('.', ',') : ''
         );
@@ -154,10 +169,15 @@ export function ShopFormScreen() {
     if (!user) return;
     setBusy(true);
     try {
-      if (editShopId) {
-        await updateShop(editShopId, input);
-      } else {
-        await createShop(input, user.id);
+      const shopId = editShopId ?? (await createShop(input, user.id)).id;
+      if (editShopId) await updateShop(editShopId, input);
+      // Angekreuzte Besonderheiten als eigene Stimme hinterlegen – Fehler hier
+      // dürfen das Speichern des Ladens nicht scheitern lassen.
+      if (features.length > 0) {
+        try {
+          const votes = Object.fromEntries(features.map((f) => [f, 1 as const]));
+          await saveFeatureVotes(shopId, user.id, votes);
+        } catch {}
       }
       Alert.alert(
         t('form.savedTitle'),
@@ -191,6 +211,16 @@ export function ShopFormScreen() {
       Alert.alert(t('common.error'), t('form.dueruemInvalid'));
       return;
     }
+    const grossPrice = parsePrice(grossText);
+    if (!grossPrice.ok) {
+      Alert.alert(t('common.error'), t('form.grossInvalid'));
+      return;
+    }
+    const menuePrice = parsePrice(menueText);
+    if (!menuePrice.ok) {
+      Alert.alert(t('common.error'), t('form.menueInvalid'));
+      return;
+    }
     for (const day of WEEKDAYS) {
       const d = days[day];
       if (!d.closed && (!TIME_PATTERN.test(d.open) || !TIME_PATTERN.test(d.close))) {
@@ -214,6 +244,8 @@ export function ShopFormScreen() {
       features,
       doener_preis: price.value,
       dueruem_preis: dueruemPrice.value,
+      doener_gross_preis: grossPrice.value,
+      menue_preis: menuePrice.value,
       city: selected.city,
       kartenzahlung,
     };
@@ -286,6 +318,27 @@ export function ShopFormScreen() {
             value={dueruemText}
             onChangeText={setDueruemText}
             placeholder="z. B. 7,50"
+            keyboardType="decimal-pad"
+          />
+        </View>
+      </View>
+
+      <View style={styles.priceRow}>
+        <View style={styles.priceCol}>
+          <TextField
+            label={t('form.grossPrice')}
+            value={grossText}
+            onChangeText={setGrossText}
+            placeholder="z. B. 8,50"
+            keyboardType="decimal-pad"
+          />
+        </View>
+        <View style={styles.priceCol}>
+          <TextField
+            label={t('form.menuePrice')}
+            value={menueText}
+            onChangeText={setMenueText}
+            placeholder="z. B. 9,00"
             keyboardType="decimal-pad"
           />
         </View>
@@ -365,9 +418,44 @@ export function ShopFormScreen() {
         );
       })}
 
-      <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 20 }}>
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        {t('form.featuresTitle')}
+      </Text>
+      <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
         {t('form.featuresNote')}
       </Text>
+      <View style={styles.featureWrap}>
+        {SHOP_FEATURES.map((f) => {
+          const active = features.includes(f);
+          return (
+            <Pressable
+              key={f}
+              onPress={() =>
+                setFeatures((prev) =>
+                  prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
+                )
+              }
+              style={[
+                styles.featureChip,
+                {
+                  backgroundColor: active ? theme.colors.primary : theme.colors.surface,
+                  borderColor: active ? theme.colors.primary : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: active ? theme.colors.onPrimary : theme.colors.text,
+                  fontSize: 13,
+                  fontWeight: '600',
+                }}
+              >
+                {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('form.hours')}</Text>
       {WEEKDAYS.map((day) => {
@@ -458,6 +546,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     padding: 12,
   },
+  featureChip: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  featureWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   priceCol: { flex: 1 },
   priceRow: { flexDirection: 'row', gap: 10 },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10, marginTop: 24 },

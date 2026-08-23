@@ -127,6 +127,10 @@ export interface Shop {
   doener_preis: number | null;
   /** Preis für Dürüm/Yufka in Euro, optional. */
   dueruem_preis: number | null;
+  /** Preis für den großen Döner in Euro, optional. */
+  doener_gross_preis: number | null;
+  /** Menü-Angebot (Döner + Getränk) in Euro, optional. */
+  menue_preis: number | null;
   /** Wann der Dönerpreis zuletzt von der Community bestätigt wurde. */
   preis_bestaetigt_am: string | null;
   /** Stadt (für Bestenliste und Dönerpreis-Index). */
@@ -200,6 +204,8 @@ export const EDITABLE_SHOP_FIELDS = [
   'features',
   'doener_preis',
   'dueruem_preis',
+  'doener_gross_preis',
+  'menue_preis',
   'city',
   'kartenzahlung',
 ] as const;

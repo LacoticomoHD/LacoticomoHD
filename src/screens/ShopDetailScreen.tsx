@@ -240,6 +240,20 @@ export function ShopDetailScreen() {
               <Text style={styles.heroPillText}>🌯 {formatPrice(shop.dueruem_preis)}</Text>
             </View>
           ) : null}
+          {shop.doener_gross_preis != null ? (
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillText}>
+                🥙 {t('detail.large')} {formatPrice(shop.doener_gross_preis)}
+              </Text>
+            </View>
+          ) : null}
+          {shop.menue_preis != null ? (
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillText}>
+                🍽️ {t('detail.menu')} {formatPrice(shop.menue_preis)}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.heroPill}>
             <Text
               style={[

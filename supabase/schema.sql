@@ -19,6 +19,10 @@ create table public.shops (
   doener_preis  numeric(5, 2) check (doener_preis is null or (doener_preis > 0 and doener_preis < 50)),
   -- Preis für Dürüm/Yufka in Euro (optional)
   dueruem_preis numeric(5, 2) check (dueruem_preis is null or (dueruem_preis > 0 and dueruem_preis < 50)),
+  -- Preis für den großen Döner (optional)
+  doener_gross_preis numeric(5, 2) check (doener_gross_preis is null or (doener_gross_preis > 0 and doener_gross_preis < 50)),
+  -- Menü-Angebot: Döner + Getränk (optional)
+  menue_preis   numeric(5, 2) check (menue_preis is null or (menue_preis > 0 and menue_preis < 50)),
   -- Wann der Dönerpreis zuletzt von der Community bestätigt wurde
   preis_bestaetigt_am timestamptz,
   -- Stadt (für Bestenliste und Dönerpreis-Index)
@@ -344,9 +348,19 @@ create policy "feature_votes_select" on public.shop_feature_votes
 create policy "feature_votes_insert_own" on public.shop_feature_votes
   for insert to authenticated with check (
     user_id = auth.uid()
-    and exists (
-      select 1 from public.ratings r
-      where r.shop_id = shop_feature_votes.shop_id and r.user_id = auth.uid()
+    and (
+      -- Wer den Laden bewertet hat, darf mitbestimmen …
+      exists (
+        select 1 from public.ratings r
+        where r.shop_id = shop_feature_votes.shop_id and r.user_id = auth.uid()
+      )
+      -- … und ebenso, wer ihn überhaupt erst eingetragen hat. Sonst müsste man
+      -- einen frisch angelegten Laden erst bewerten, um sagen zu dürfen, was es
+      -- dort gibt.
+      or exists (
+        select 1 from public.shops sh
+        where sh.id = shop_feature_votes.shop_id and sh.created_by = auth.uid()
+      )
     )
   );
 

@@ -325,6 +325,8 @@ export interface NewShopInput {
   features: ShopFeature[];
   doener_preis: number | null;
   dueruem_preis: number | null;
+  doener_gross_preis: number | null;
+  menue_preis: number | null;
   city: string | null;
   kartenzahlung: boolean | null;
 }

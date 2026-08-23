@@ -11,8 +11,16 @@ import { SHOP_FEATURE_ICONS, SHOP_FEATURES } from '@/types';
 export function FilterBar() {
   const { theme } = useTheme();
   const { t, featureLabel } = useI18n();
-  const { activeFeatures, openNowOnly, cardPaymentOnly, toggleFeature, toggleOpenNow, toggleCardPayment } =
-    useFilters();
+  const {
+    activeFeatures,
+    openNowOnly,
+    cardPaymentOnly,
+    menuOnly,
+    toggleFeature,
+    toggleOpenNow,
+    toggleCardPayment,
+    toggleMenu,
+  } = useFilters();
 
   const chip = (active: boolean) => [
     styles.chip,
@@ -39,6 +47,9 @@ export function FilterBar() {
       </Pressable>
       <Pressable onPress={toggleCardPayment} style={chip(cardPaymentOnly)}>
         <Text style={chipText(cardPaymentOnly)}>💳 {t('filter.cardPayment')}</Text>
+      </Pressable>
+      <Pressable onPress={toggleMenu} style={chip(menuOnly)}>
+        <Text style={chipText(menuOnly)}>🍽️ {t('filter.menu')}</Text>
       </Pressable>
       {SHOP_FEATURES.map((f) => {
         const active = activeFeatures.includes(f);

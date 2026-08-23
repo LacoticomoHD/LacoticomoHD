@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Don Döner – KOMPLETT-UPDATE der Datenbank (idempotent)
--- Bringt jede Datenbank auf den aktuellen Stand (v14), egal welcher Stand
+-- Bringt jede Datenbank auf den aktuellen Stand (v15), egal welcher Stand
 -- vorher da war. Kann gefahrlos mehrfach ausgeführt werden – vorhandene
 -- Objekte und Daten bleiben unangetastet. Ersetzt alle upgrade_vX_zu_vY.sql.
 -- Im Supabase SQL Editor ausführen.
@@ -14,6 +14,15 @@ alter table public.shops   add column if not exists dueruem_preis numeric(5, 2);
 alter table public.shops   add column if not exists city          text;
 alter table public.shops   add column if not exists preis_bestaetigt_am timestamptz;
 alter table public.shops   add column if not exists kartenzahlung boolean;
+-- Weitere Preise: großer Döner und Menü-Angebot (Döner + Getränk)
+alter table public.shops   add column if not exists doener_gross_preis numeric(5, 2);
+alter table public.shops   add column if not exists menue_preis        numeric(5, 2);
+alter table public.shops drop constraint if exists shops_doener_gross_preis_check;
+alter table public.shops add  constraint shops_doener_gross_preis_check
+  check (doener_gross_preis is null or (doener_gross_preis > 0 and doener_gross_preis < 50));
+alter table public.shops drop constraint if exists shops_menue_preis_check;
+alter table public.shops add  constraint shops_menue_preis_check
+  check (menue_preis is null or (menue_preis > 0 and menue_preis < 50));
 -- Automatisch ausgeblendet ab 3 Meldungen "dauerhaft geschlossen" (Trigger unten)
 alter table public.shops   add column if not exists ausgeblendet  boolean not null default false;
 alter table public.ratings add column if not exists verified      boolean not null default false;
@@ -413,9 +422,19 @@ create policy "feature_votes_select" on public.shop_feature_votes
 create policy "feature_votes_insert_own" on public.shop_feature_votes
   for insert to authenticated with check (
     user_id = auth.uid()
-    and exists (
-      select 1 from public.ratings r
-      where r.shop_id = shop_feature_votes.shop_id and r.user_id = auth.uid()
+    and (
+      -- Wer den Laden bewertet hat, darf mitbestimmen …
+      exists (
+        select 1 from public.ratings r
+        where r.shop_id = shop_feature_votes.shop_id and r.user_id = auth.uid()
+      )
+      -- … und ebenso, wer ihn überhaupt erst eingetragen hat. Sonst müsste man
+      -- einen frisch angelegten Laden erst bewerten, um sagen zu dürfen, was es
+      -- dort gibt.
+      or exists (
+        select 1 from public.shops sh
+        where sh.id = shop_feature_votes.shop_id and sh.created_by = auth.uid()
+      )
     )
   );
 create policy "feature_votes_update_own" on public.shop_feature_votes
