@@ -14,7 +14,8 @@ import {
 import Feather from '@expo/vector-icons/Feather';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import * as SystemUI from 'expo-system-ui';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -29,6 +30,11 @@ installWebAlert();
 
 function AppInner() {
   const { theme } = useTheme();
+  // Fensterhintergrund an das Theme anpassen – verhindert weiße Blitzer beim
+  // Seitenwechsel im Dunkelmodus.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.colors.background).catch(() => {});
+  }, [theme.colors.background]);
   // Beide Schriftfamilien vorab laden: Manrope (hell) und Space Grotesk (dunkel).
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,

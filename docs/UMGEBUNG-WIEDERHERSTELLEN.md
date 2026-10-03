@@ -46,3 +46,30 @@ liegen: `node_modules/`, `android/`, `dist/` und vor allem **`.env`**.
 - **Android-Signaturschlüssel** (`android/app/dondoener-release.keystore`) liegt
   ebenfalls außerhalb von Git. Ohne ihn lässt sich keine Update-fähige APK
   bauen – Sicherungskopie bereithalten (siehe `docs/RELEASE-SIGNATUR.md`).
+
+## Android-APK nach einem Reset bauen
+
+1. Android-SDK installieren (Kommandozeilen-Werkzeuge nach
+   `/opt/android-sdk/cmdline-tools/latest`, dann
+   `sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"`).
+2. `npx expo prebuild --platform android --clean` – erzeugt `android/` neu.
+   Versionsname und -nummer kommen aus `app.json` (`version`,
+   `android.versionCode`); die Nummer bei jeder Veröffentlichung erhöhen.
+3. In `android/app/build.gradle` unter `signingConfigs` einen Block `release`
+   ergänzen, der die `DONDOENER_*`-Werte aus `gradle.properties` liest, und
+   im `buildTypes.release` `signingConfig signingConfigs.release` setzen
+   (siehe `docs/RELEASE-SIGNATUR.md`).
+4. In `android/gradle.properties` `expo.useLegacyPackaging=true` setzen –
+   sonst wird die APK fast doppelt so groß (38 statt 19 MB).
+5. `echo "sdk.dir=/opt/android-sdk" > android/local.properties`, dann
+   `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`.
+6. Signatur prüfen: `apksigner verify --print-certs app-release.apk` muss
+   `CN=Don Doener` zeigen.
+
+## Web-App veröffentlichen
+
+`npx expo export --platform web --clear`, dann in `dist/index.html` vor
+`</head>` die PWA-Angaben (Manifest, `theme-color`, Apple-Touch-Icon,
+`*-web-app-capable`) einfügen, `dist/404.html` als Kopie davon anlegen,
+`dist/.nojekyll` erzeugen und den Ordner als neuen Commit auf `gh-pages`
+legen (die Datei `don-doener-latest.apk` aus dem vorigen Stand übernehmen).

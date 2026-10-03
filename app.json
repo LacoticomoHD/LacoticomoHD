@@ -2,7 +2,7 @@
   "expo": {
     "name": "Don Döner",
     "slug": "don-doener",
-    "version": "1.0.0",
+    "version": "5.1.0",
     "orientation": "portrait",
     "scheme": "dondoener",
     "icon": "./assets/icon.png",
@@ -33,7 +33,8 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "versionCode": 51
     },
     "plugins": [
       [
