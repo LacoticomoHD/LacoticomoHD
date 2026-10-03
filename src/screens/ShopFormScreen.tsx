@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   View,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -30,12 +29,12 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
   OpeningHours,
-  SHOP_FEATURE_ICONS,
   SHOP_FEATURES,
   ShopFeature,
   WEEKDAYS,
   Weekday,
 } from '@/types';
+import { Text } from '@/components/AppText';
 
 const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -450,7 +449,7 @@ export function ShopFormScreen() {
                   fontWeight: '600',
                 }}
               >
-                {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
+                {featureLabel(f)}
               </Text>
             </Pressable>
           );
@@ -516,7 +515,7 @@ export function ShopFormScreen() {
 
 const styles = StyleSheet.create({
   cardPayOption: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
@@ -534,14 +533,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dayRow: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     marginBottom: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   geoResult: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     marginTop: 8,
     padding: 12,

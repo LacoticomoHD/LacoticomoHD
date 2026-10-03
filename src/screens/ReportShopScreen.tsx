@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
@@ -10,6 +10,7 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { REPORT_REASONS, ReportReason } from '@/types';
+import { Text } from '@/components/AppText';
 
 export function ReportShopScreen() {
   const { theme } = useTheme();
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   detailsInput: { minHeight: 100, textAlignVertical: 'top' },
   reasonRow: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: 8,
     padding: 14,

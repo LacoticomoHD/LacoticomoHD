@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -10,6 +10,7 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { RATING_CATEGORIES, RatingWithShop } from '@/types';
+import { Text } from '@/components/AppText';
 
 /** Eigener Gesamtschnitt einer Bewertung – nur über tatsächlich vergebene
  *  Kategorien (Fleischqualität ist optional und darf fehlen). */
@@ -109,7 +110,7 @@ export function MyRatingsScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 10,
     padding: 14,

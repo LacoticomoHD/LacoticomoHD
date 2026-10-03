@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import {
   DarkTheme as NavDarkTheme,
   DefaultTheme as NavLightTheme,
@@ -30,6 +30,7 @@ import { ShopEditsScreen } from '@/screens/ShopEditsScreen';
 import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
 import { useTheme } from '@/theme/ThemeContext';
+import { Icon, type IconName } from '@/components/Icon';
 
 import type { RootStackParamList, TabParamList } from './types';
 
@@ -71,11 +72,11 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
-const TAB_ICONS: Record<keyof TabParamList, string> = {
-  Karte: '🗺️',
-  Liste: '📋',
-  Top10: '🏆',
-  Profil: '👤',
+const TAB_ICONS: Record<keyof TabParamList, IconName> = {
+  Karte: 'map',
+  Liste: 'list',
+  Top10: 'award',
+  Profil: 'user',
 };
 
 function Tabs() {
@@ -84,13 +85,19 @@ function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontFamily: theme.fonts.extrabold, fontSize: 19 },
+        headerShadowVisible: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>
-            {TAB_ICONS[route.name]}
-          </Text>
+        tabBarLabelStyle: { fontFamily: theme.fonts.semibold, fontSize: 11 },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+          height: 64,
+          paddingTop: 6,
+        },
+        tabBarIcon: ({ focused, color }) => (
+          <Icon name={TAB_ICONS[route.name]} size={22} color={focused ? color : theme.colors.textSecondary} />
         ),
       })}
     >
@@ -115,9 +122,16 @@ export function RootNavigator() {
   const { t } = useI18n();
   const { loading, passwordRecovery } = useAuth();
 
+  const navFonts = {
+    regular: { fontFamily: theme.fonts.regular, fontWeight: 'normal' as const },
+    medium: { fontFamily: theme.fonts.medium, fontWeight: 'normal' as const },
+    bold: { fontFamily: theme.fonts.bold, fontWeight: 'normal' as const },
+    heavy: { fontFamily: theme.fonts.extrabold, fontWeight: 'normal' as const },
+  };
   const navTheme = theme.dark
     ? {
         ...NavDarkTheme,
+        fonts: navFonts,
         colors: {
           ...NavDarkTheme.colors,
           background: theme.colors.background,
@@ -129,6 +143,7 @@ export function RootNavigator() {
       }
     : {
         ...NavLightTheme,
+        fonts: navFonts,
         colors: {
           ...NavLightTheme.colors,
           background: theme.colors.background,
@@ -163,7 +178,13 @@ export function RootNavigator() {
       ) : (
         // Karte, Liste und Ladendetails sind auch ohne Konto sichtbar.
         // Erst Aktionen (Bewerten, Eintragen, Merken) verlangen eine Anmeldung.
-        <Stack.Navigator>
+        <Stack.Navigator
+          screenOptions={{
+            headerTitleStyle: { fontFamily: theme.fonts.extrabold, fontSize: 18 },
+            headerShadowVisible: false,
+            headerTintColor: theme.colors.primary,
+          }}
+        >
           <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen
             name="Auth"

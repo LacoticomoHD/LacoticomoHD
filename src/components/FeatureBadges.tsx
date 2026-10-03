@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { SHOP_FEATURE_ICONS, ShopFeature } from '@/types';
+import { ShopFeature } from '@/types';
+import { Text } from '@/components/AppText';
 
 interface Props {
   features: ShopFeature[];
@@ -31,10 +32,10 @@ export function FeatureBadges({ features, counts }: Props) {
             { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.border },
           ]}
         >
-          <Text style={{ color: theme.colors.text, fontSize: 13 }}>
-            {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
+          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
+            {featureLabel(f)}
             {counts?.[f] ? (
-              <Text style={{ color: theme.colors.textSecondary }}> ✓{counts[f]}</Text>
+              <Text style={{ color: theme.colors.textSecondary }}>{`  ✓ ${counts[f]}`}</Text>
             ) : null}
           </Text>
         </View>
@@ -44,11 +45,11 @@ export function FeatureBadges({ features, counts }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   badge: {
-    borderRadius: 14,
+    borderRadius: 15,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 });

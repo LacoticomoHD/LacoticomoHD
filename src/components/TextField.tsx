@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Pressable, StyleSheet, TextInputProps, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeContext';
+import { Text, TextInput } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -39,7 +41,7 @@ export function TextField({ label, style, isPassword, ...rest }: Props) {
             style={styles.eye}
             accessibilityLabel={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
           >
-            <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Icon name={showPassword ? 'eye-off' : 'eye'} size={19} color={theme.colors.textSecondary} />
           </Pressable>
         ) : null}
       </View>
@@ -57,13 +59,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     fontSize: 16,
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   inputWithEye: { paddingRight: 44 },
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  label: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
 });

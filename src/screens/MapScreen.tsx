@@ -15,8 +15,6 @@ import {
   Alert,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -33,15 +31,21 @@ import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
+import { Text, TextInput } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
+import { darkStyleUrl } from '@/lib/mapStyle';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Start: Karlsruhe – hier begann die Community. [Längengrad, Breitengrad]
 // Wird beim Start durch den eigenen Standort ersetzt, sobald die Freigabe da ist.
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
 
-// Karten-Marker (Döner-Pin): grün = geöffnet, grau = geschlossen.
+// Karten-Marker (Döner-Pin) je Theme: farbig = geöffnet, neutral = geschlossen.
 const MARKER_IMAGES = {
-  'pin-open': require('../../assets/markers/pin-open.png'),
-  'pin-closed': require('../../assets/markers/pin-closed.png'),
+  'pin-open-light': require('../../assets/markers/pin-open-light.png'),
+  'pin-closed-light': require('../../assets/markers/pin-closed-light.png'),
+  'pin-open-dark': require('../../assets/markers/pin-open-dark.png'),
+  'pin-closed-dark': require('../../assets/markers/pin-closed-dark.png'),
 };
 
 /** Kamera-Sprünge laufen ausschließlich über defaultSettings + key-Remount:
@@ -77,6 +81,8 @@ const MAP_STYLE: string | object = MAP_STYLE_URL ?? {
   },
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
+
+const MAP_STYLE_DARK: string | object = darkStyleUrl(MAP_STYLE_URL) ?? MAP_STYLE;
 
 const ATTRIBUTION_TEXT = MAP_STYLE_URL?.includes('maptiler')
   ? '© MapTiler © OpenStreetMap-Mitwirkende'
@@ -228,7 +234,7 @@ export function MapScreen() {
       <MapView
         ref={mapRef}
         style={styles.flex}
-        mapStyle={MAP_STYLE}
+        mapStyle={theme.dark ? MAP_STYLE_DARK : MAP_STYLE}
         attributionEnabled
         logoEnabled={false}
         onRegionDidChange={loadVisibleShops}
@@ -249,7 +255,12 @@ export function MapScreen() {
           <SymbolLayer
             id="shop-markers"
             style={{
-              iconImage: ['case', ['get', 'open'], 'pin-open', 'pin-closed'],
+              iconImage: [
+                'case',
+                ['get', 'open'],
+                theme.dark ? 'pin-open-dark' : 'pin-open-light',
+                theme.dark ? 'pin-closed-dark' : 'pin-closed-light',
+              ],
               // Noch unbewertete Läden treten optisch zurück.
               iconSize: ['case', ['get', 'rated'], 0.17, 0.12],
               iconOpacity: ['case', ['get', 'rated'], 1, 0.7],
@@ -266,10 +277,14 @@ export function MapScreen() {
         <View
           style={[
             styles.searchBox,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.overlay,
+              borderColor: theme.colors.overlayBorder,
+              shadowColor: theme.dark ? '#000' : theme.glow,
+            },
           ]}
         >
-          <Text style={{ fontSize: 15 }}>🔍</Text>
+          <Icon name="search" size={19} color={theme.colors.textSecondary} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -283,7 +298,7 @@ export function MapScreen() {
             <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : searchQuery.length > 0 ? (
             <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 16 }}>✕</Text>
+              <Icon name="x" size={18} color={theme.colors.textSecondary} />
             </Pressable>
           ) : null}
         </View>
@@ -313,10 +328,16 @@ export function MapScreen() {
         style={({ pressed }) => [
           styles.fab,
           styles.locateFab,
-          { backgroundColor: theme.colors.surface, transform: [{ scale: pressed ? 0.92 : 1 }] },
+          {
+            backgroundColor: theme.colors.overlay,
+            borderColor: theme.colors.overlayBorder,
+            borderWidth: 1,
+            transform: [{ scale: pressed ? 0.92 : 1 }],
+          },
         ]}
+        accessibilityLabel={t('map.locationTitle')}
       >
-        <Text style={{ fontSize: 22 }}>📍</Text>
+        <Icon name="crosshair" size={22} color={theme.colors.text} />
       </Pressable>
 
       <Pressable
@@ -328,17 +349,25 @@ export function MapScreen() {
         style={({ pressed }) => [
           styles.fab,
           styles.addFab,
-          { backgroundColor: theme.colors.primary, transform: [{ scale: pressed ? 0.92 : 1 }] },
+          { shadowColor: theme.glow, transform: [{ scale: pressed ? 0.92 : 1 }] },
         ]}
+        accessibilityLabel={t('nav.addShop')}
       >
-        <Text style={{ color: theme.colors.onPrimary, fontSize: 30, lineHeight: 34 }}>＋</Text>
+        <LinearGradient
+          colors={theme.gradients.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabFill}
+        >
+          <Icon name="plus" size={28} color={theme.colors.onPrimary} />
+        </LinearGradient>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  addFab: { bottom: 24, right: 16 },
+  addFab: { bottom: 24, right: 16, shadowOpacity: 0.45, shadowRadius: 12 },
   attribution: {
     borderRadius: 4,
     bottom: 4,
@@ -361,27 +390,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     width: 56,
   },
+  fabFill: {
+    alignItems: 'center',
+    borderRadius: 28,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
   flex: { flex: 1 },
   locateFab: { bottom: 92, right: 16 },
   searchBox: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 27,
     borderWidth: 1,
-    elevation: 3,
+    elevation: 6,
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 6,
-    marginHorizontal: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    gap: 10,
+    height: 54,
+    marginBottom: 4,
+    marginHorizontal: 12,
+    paddingHorizontal: 18,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
   },
   searchInput: { flex: 1, fontSize: 15, padding: 0 },
   truncatedHint: {
-    borderRadius: 10,
+    borderRadius: 14,
     fontSize: 12,
     marginHorizontal: 8,
     marginTop: 6,

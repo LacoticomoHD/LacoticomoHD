@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -12,6 +12,8 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { ShopWithSummary } from '@/types';
+import { Text } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
 
 export function FavoritesScreen() {
   const { theme } = useTheme();
@@ -103,13 +105,13 @@ export function FavoritesScreen() {
                   )}
                   {item.doener_preis != null ? (
                     <Text style={{ color: theme.colors.accent, fontSize: 12, fontWeight: '700' }}>
-                      🥙 {formatPrice(item.doener_preis)}
+                      {formatPrice(item.doener_preis)}
                     </Text>
                   ) : null}
                 </View>
               </View>
-              <Pressable onPress={() => unfavorite(item.id)} hitSlop={8}>
-                <Text style={{ fontSize: 22 }}>❤️</Text>
+              <Pressable onPress={() => unfavorite(item.id)} hitSlop={8} accessibilityLabel={t('detail.act.saved')}>
+                <Icon name="heart" size={22} color={theme.colors.primary} />
               </Pressable>
             </Pressable>
           );
@@ -122,7 +124,7 @@ export function FavoritesScreen() {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,

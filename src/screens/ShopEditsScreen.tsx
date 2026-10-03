@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { EDITABLE_SHOP_FIELDS, ShopEdit } from '@/types';
+import { Text } from '@/components/AppText';
 
 /** Kurzfassung eines Werts für die Anzeige (Objekte/Listen nur angedeutet). */
 function short(value: unknown): string {
@@ -157,7 +158,7 @@ export function ShopEditsScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 10,
     padding: 14,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   list: { padding: 16 },
   restoreButton: {
     alignSelf: 'flex-start',
-    borderRadius: 10,
+    borderRadius: 14,
     marginTop: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,

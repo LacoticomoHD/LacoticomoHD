@@ -1,10 +1,13 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { useI18n } from '@/i18n/I18nContext';
 import { useFilters } from '@/lib/FilterContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { SHOP_FEATURE_ICONS, SHOP_FEATURES } from '@/types';
+import { SHOP_FEATURES } from '@/types';
+import { Icon, type IconName } from '@/components/Icon';
+import { Text } from '@/components/AppText';
 
 /** Horizontale Chip-Leiste: "Jetzt geöffnet" + Besonderheiten-Filter.
  *  Wird auf Karte und Liste gleichermaßen genutzt (gemeinsamer Zustand). */
@@ -22,18 +25,53 @@ export function FilterBar() {
     toggleMenu,
   } = useFilters();
 
-  const chip = (active: boolean) => [
-    styles.chip,
-    {
-      backgroundColor: active ? theme.colors.primary : theme.colors.surface,
-      borderColor: active ? theme.colors.primary : theme.colors.border,
-    },
-  ];
-  const chipText = (active: boolean) => ({
-    color: active ? theme.colors.onPrimary : theme.colors.text,
-    fontSize: 13,
-    fontWeight: '600' as const,
-  });
+  const Chip = ({
+    active,
+    onPress,
+    icon,
+    label,
+  }: {
+    active: boolean;
+    onPress: () => void;
+    icon?: IconName;
+    label: string;
+  }) => {
+    const color = active ? theme.colors.onPrimary : theme.colors.text;
+    const inner = (
+      <>
+        {icon ? <Icon name={icon} size={15} color={color} /> : null}
+        <Text style={[styles.chipText, { color }]}>{label}</Text>
+      </>
+    );
+    return (
+      <Pressable onPress={onPress} style={styles.chipWrap}>
+        {active ? (
+          <LinearGradient
+            colors={theme.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.chip, styles.chipActive, { shadowColor: theme.glow }]}
+          >
+            {inner}
+          </LinearGradient>
+        ) : (
+          <View
+            style={[
+              styles.chip,
+              Platform.OS === 'web' ? ({ backdropFilter: 'blur(16px)' } as object) : null,
+              {
+                backgroundColor: theme.colors.overlay,
+                borderColor: theme.colors.overlayBorder,
+                borderWidth: 1,
+              },
+            ]}
+          >
+            {inner}
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <ScrollView
@@ -42,25 +80,22 @@ export function FilterBar() {
       style={styles.bar}
       contentContainerStyle={styles.content}
     >
-      <Pressable onPress={toggleOpenNow} style={chip(openNowOnly)}>
-        <Text style={chipText(openNowOnly)}>🕐 {t('common.openNow')}</Text>
-      </Pressable>
-      <Pressable onPress={toggleCardPayment} style={chip(cardPaymentOnly)}>
-        <Text style={chipText(cardPaymentOnly)}>💳 {t('filter.cardPayment')}</Text>
-      </Pressable>
-      <Pressable onPress={toggleMenu} style={chip(menuOnly)}>
-        <Text style={chipText(menuOnly)}>🍽️ {t('filter.menu')}</Text>
-      </Pressable>
-      {SHOP_FEATURES.map((f) => {
-        const active = activeFeatures.includes(f);
-        return (
-          <Pressable key={f} onPress={() => toggleFeature(f)} style={chip(active)}>
-            <Text style={chipText(active)}>
-              {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
-            </Text>
-          </Pressable>
-        );
-      })}
+      <Chip active={openNowOnly} onPress={toggleOpenNow} icon="clock" label={t('common.openNow')} />
+      <Chip
+        active={cardPaymentOnly}
+        onPress={toggleCardPayment}
+        icon="credit-card"
+        label={t('filter.cardPayment')}
+      />
+      <Chip active={menuOnly} onPress={toggleMenu} icon="coffee" label={t('filter.menu')} />
+      {SHOP_FEATURES.map((f) => (
+        <Chip
+          key={f}
+          active={activeFeatures.includes(f)}
+          onPress={() => toggleFeature(f)}
+          label={featureLabel(f)}
+        />
+      ))}
     </ScrollView>
   );
 }
@@ -72,16 +107,20 @@ const styles = StyleSheet.create({
   // riesige Lücken (gewachsen, Höhe zählt nur als Startwert).
   bar: { flexGrow: 0, flexShrink: 0, height: 56 },
   chip: {
-    borderRadius: 18,
-    borderWidth: 1,
-    elevation: 2,
-    marginRight: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
+    alignItems: 'center',
+    borderRadius: 20,
+    flexDirection: 'row',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 15,
   },
+  chipActive: {
+    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  chipText: { fontSize: 13.5, fontWeight: '600' },
+  chipWrap: { marginRight: 8 },
   content: { alignItems: 'center', paddingHorizontal: 12 },
 });

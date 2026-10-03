@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 
 import { tapLight } from '@/lib/haptics';
 import { useTheme } from '@/theme/ThemeContext';
+import { Text } from '@/components/AppText';
 
 interface Props {
   value: number;

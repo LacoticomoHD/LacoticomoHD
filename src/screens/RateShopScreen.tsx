@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
@@ -27,10 +27,10 @@ import {
   FeatureVote,
   RATING_CATEGORIES,
   RatingCategory,
-  SHOP_FEATURE_ICONS,
   SHOP_FEATURES,
   ShopFeature,
 } from '@/types';
+import { Text } from '@/components/AppText';
 
 // UI-Zustand: 0 = noch nicht bewertet. Fleischqualität darf 0 bleiben (optional).
 const EMPTY: Record<RatingCategory, number> = {
@@ -267,7 +267,7 @@ export function RateShopScreen() {
             >
               <Text style={{ color: textColor, fontSize: 14 }}>
                 {vote === 1 ? '✓ ' : vote === -1 ? '✗ ' : ''}
-                {SHOP_FEATURE_ICONS[f]} {featureLabel(f)}
+                {featureLabel(f)}
               </Text>
             </Pressable>
           );
@@ -409,7 +409,7 @@ export function RateShopScreen() {
 const styles = StyleSheet.create({
   cardChip: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
@@ -426,14 +426,14 @@ const styles = StyleSheet.create({
   featureWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   label: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
   priceChip: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   priceRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   row: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 12,
     padding: 16,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   spacer: { height: 20 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 4 },
   verifiedHint: {
-    borderRadius: 10,
+    borderRadius: 14,
     fontSize: 12,
     lineHeight: 17,
     marginBottom: 16,

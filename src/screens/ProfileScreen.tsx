@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -11,6 +11,8 @@ import { useAuth } from '@/lib/AuthContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
 import { RatingWithShop } from '@/types';
+import { Text } from '@/components/AppText';
+import { Icon, type IconName } from '@/components/Icon';
 
 /** Döner-Pass: Abzeichen nach Anzahl bewerteter Läden (Schwellen + Übersetzungsschlüssel). */
 const BADGES = [
@@ -200,71 +202,22 @@ export function ProfileScreen() {
       ) : null}
 
       {isAdmin ? (
-        <Pressable
-          onPress={() => navigation.navigate('ReportsInbox')}
-          style={[
-            styles.legalLink,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
-            {t('profile.reportsAdmin')}
-          </Text>
-          <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-        </Pressable>
+        <LinkRow icon="flag" label={t('profile.reportsAdmin')} onPress={() => navigation.navigate('ReportsInbox')} />
       ) : null}
 
       {isAdmin ? (
-        <Pressable
-          onPress={() => navigation.navigate('ShopEdits')}
-          style={[
-            styles.legalLink,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
-            {t('profile.editsAdmin')}
-          </Text>
-          <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-        </Pressable>
+        <LinkRow icon="git-commit" label={t('profile.editsAdmin')} onPress={() => navigation.navigate('ShopEdits')} />
       ) : null}
 
       {user ? (
       <>
-      <Pressable
-        onPress={() => navigation.navigate('Favorites')}
-        style={[
-          styles.legalLink,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-        ]}
-      >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.favorites')}</Text>
-        <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-      </Pressable>
+      <LinkRow icon="heart" label={t('profile.favorites')} onPress={() => navigation.navigate('Favorites')} />
 
-      <Pressable
-        onPress={() => navigation.navigate('MyRatings')}
-        style={[
-          styles.legalLink,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-        ]}
-      >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.myRatings')}</Text>
-        <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-      </Pressable>
+      <LinkRow icon="star" label={t('profile.myRatings')} onPress={() => navigation.navigate('MyRatings')} />
       </>
       ) : null}
 
-      <Pressable
-        onPress={() => navigation.navigate('Legal')}
-        style={[
-          styles.legalLink,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-        ]}
-      >
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{t('profile.legal')}</Text>
-        <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-      </Pressable>
+      <LinkRow icon="file-text" label={t('profile.legal')} onPress={() => navigation.navigate('Legal')} />
 
       {user ? (
         <>
@@ -281,9 +234,25 @@ export function ProfileScreen() {
   );
 }
 
+function LinkRow({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.legalLink, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+    >
+      <View style={[styles.linkIcon, { backgroundColor: theme.colors.surfaceVariant }]}>
+        <Icon name={icon} size={17} color={theme.colors.primary} />
+      </View>
+      <Text style={{ color: theme.colors.text, flex: 1, fontSize: 15, fontWeight: '600' }}>{label}</Text>
+      <Icon name="chevron-right" size={19} color={theme.colors.textSecondary} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 16,
     padding: 16,
@@ -292,22 +261,31 @@ const styles = StyleSheet.create({
   deleteLink: { alignSelf: 'center', marginTop: 20, padding: 4 },
   legalLink: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    padding: 16,
+    gap: 13,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
+  linkIcon: { alignItems: 'center', borderRadius: 12, height: 36, justifyContent: 'center', width: 36 },
   modeChip: {
-    borderRadius: 12,
+    borderRadius: 18,
     borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   modeRow: { flexDirection: 'row', gap: 10 },
-  passNumber: { fontSize: 28, fontWeight: '800' },
+  passNumber: { fontSize: 32, fontWeight: '800', letterSpacing: -1 },
   passRow: { flexDirection: 'row', gap: 24 },
   passStat: { alignItems: 'center' },
-  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
+  sectionTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 12,
+    opacity: 0.7,
+    textTransform: 'uppercase',
+  },
 });

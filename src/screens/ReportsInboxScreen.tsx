@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -8,6 +8,7 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { ReportWithShop } from '@/types';
+import { Text } from '@/components/AppText';
 
 /** Admin-Postfach: alle Nutzer-Meldungen, offene zuerst. Nur für app_admins sichtbar. */
 export function ReportsInboxScreen() {
@@ -78,7 +79,7 @@ export function ReportsInboxScreen() {
                 style={styles.cardBody}
               >
                 <Text style={[styles.reason, { color: theme.colors.text }]}>
-                  🚩 {reportReasonLabel(item.reason)}
+                  {reportReasonLabel(item.reason)}
                 </Text>
                 <Text style={{ color: theme.colors.text, fontSize: 14 }} numberOfLines={1}>
                   {item.shops?.name ?? t('inbox.deletedShop')}
@@ -134,7 +135,7 @@ export function ReportsInboxScreen() {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
   list: { padding: 16 },
   reason: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
   statusButton: {
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

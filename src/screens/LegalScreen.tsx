@@ -1,8 +1,9 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
+import { Text } from '@/components/AppText';
 
 // Impressum (§ 5 DDG) und Datenschutzerklärung (DSGVO). Die ladungsfähige
 // Anschrift wurde auf Wunsch des Betreibers entfernt; bei geschäftsmäßigem
@@ -88,7 +89,7 @@ export function LegalScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 16,
     padding: 16,

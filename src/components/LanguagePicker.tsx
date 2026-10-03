@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useI18n } from '@/i18n/I18nContext';
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, LANGUAGES } from '@/i18n/translations';
 import { useTheme } from '@/theme/ThemeContext';
+import { Text } from '@/components/AppText';
 
 /** Sprachauswahl als Chip-Reihe. `compact` = nur Flaggen (für den Auth-Screen). */
 export function LanguagePicker({ compact }: { compact?: boolean }) {
@@ -46,7 +47,7 @@ export function LanguagePicker({ compact }: { compact?: boolean }) {
 
 const styles = StyleSheet.create({
   chip: {
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 9,

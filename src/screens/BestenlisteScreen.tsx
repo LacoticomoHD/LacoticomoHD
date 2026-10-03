@@ -6,7 +6,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -19,6 +18,9 @@ import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { CityStats, ShopWithSummary } from '@/types';
+import { Text } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -239,51 +241,89 @@ export function BestenlisteScreen() {
               : t('top.emptyRating')}
           </Text>
         }
-        renderItem={({ item, index }) => (
-          <Pressable
-            onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
-            style={[
-              styles.card,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            <Text style={styles.rank}>{MEDALS[index] ?? `${index + 1}.`}</Text>
-            <View style={styles.cardBody}>
-              <Text style={[styles.cardName, { color: theme.colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
-                {item.city ?? item.address}
-              </Text>
-              <View style={styles.cardStats}>
-                <StarRating value={item.summary?.avg_gesamt ?? 0} size={14} />
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                  {item.summary?.avg_gesamt?.toFixed(1)} ({item.summary?.rating_count})
+        renderItem={({ item, index }) => {
+          const podium = index < 3;
+          const rank = (
+            <Text
+              style={[
+                styles.rankText,
+                { color: podium ? theme.colors.onPrimary : theme.colors.textSecondary },
+              ]}
+            >
+              {index + 1}
+            </Text>
+          );
+          return (
+            <Pressable
+              onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
+              style={[
+                styles.card,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              {podium ? (
+                <LinearGradient
+                  colors={theme.gradients.primary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.rank, { opacity: 1 - index * 0.18 }]}
+                >
+                  {rank}
+                </LinearGradient>
+              ) : (
+                <View style={[styles.rank, { backgroundColor: theme.colors.surfaceVariant }]}>{rank}</View>
+              )}
+              <View style={styles.cardBody}>
+                <Text style={[styles.cardName, { color: theme.colors.text }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5 }} numberOfLines={1}>
+                  {[
+                    item.city ?? item.address,
+                    item.doener_preis != null ? formatPrice(item.doener_preis) : null,
+                    `${item.summary?.rating_count ?? 0} ${
+                      item.summary?.rating_count === 1 ? t('detail.rating') : t('detail.ratings')
+                    }`,
+                  ]
+                    .filter(Boolean)
+                    .join('  ·  ')}
                 </Text>
                 {item.summary && item.summary.verifiziert_count > 0 ? (
-                  <Text style={{ color: theme.colors.success, fontSize: 12 }}>
-                    📍{item.summary.verifiziert_count}
-                  </Text>
-                ) : null}
-                {item.doener_preis != null ? (
-                  <Text style={{ color: theme.colors.accent, fontSize: 12, fontWeight: '700' }}>
-                    🥙 {formatPrice(item.doener_preis)}
-                  </Text>
+                  <View style={styles.verifiedRow}>
+                    <Icon name="check-circle" size={12} color={theme.colors.success} />
+                    <Text style={{ color: theme.colors.success, fontSize: 11.5, fontWeight: '600' }}>
+                      {item.summary.verifiziert_count}
+                    </Text>
+                  </View>
                 ) : null}
               </View>
-              {mode === 'value' && item.value_score != null && item.doener_preis != null ? (
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                  {item.summary?.avg_gesamt?.toFixed(1)} ★ für {formatPrice(item.doener_preis)}
+              <View style={styles.score}>
+                <Text
+                  style={[
+                    styles.scoreNumber,
+                    { color: theme.dark ? theme.colors.ratingChipText : theme.colors.text },
+                  ]}
+                >
+                  {item.summary?.avg_gesamt?.toFixed(1).replace('.', ',')}
                 </Text>
-              ) : null}
-            </View>
-          </Pressable>
-        )}
+                <StarRating value={item.summary?.avg_gesamt ?? 0} size={10} />
+              </View>
+            </Pressable>
+          );
+        }}
       />
 
       {shops.length > 0 ? (
-        <Pressable onPress={share} style={[styles.shareFab, { backgroundColor: theme.colors.primary }]}>
-          <Text style={{ color: theme.colors.onPrimary, fontWeight: '700' }}>{t('top.share')}</Text>
+        <Pressable onPress={share} style={[styles.shareFab, { shadowColor: theme.glow }]}>
+          <LinearGradient
+            colors={theme.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.shareFill}
+          >
+            <Icon name="share-2" size={17} color={theme.colors.onPrimary} />
+            <Text style={{ color: theme.colors.onPrimary, fontWeight: '700' }}>{t('top.share')}</Text>
+          </LinearGradient>
         </Pressable>
       ) : null}
     </View>
@@ -293,12 +333,12 @@ export function BestenlisteScreen() {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 13,
     marginBottom: 10,
-    padding: 14,
+    padding: 13,
   },
   cardBody: { flex: 1 },
   cardName: { fontSize: 16, fontWeight: '700' },
@@ -306,17 +346,17 @@ const styles = StyleSheet.create({
   cityBar: { gap: 8, paddingHorizontal: 16 },
   cityBarWrap: { paddingVertical: 10 },
   cityChip: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   cheapList: { borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
   cheapRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },
   provisionalNote: {
-    borderRadius: 12,
+    borderRadius: 16,
     fontSize: 12.5,
     lineHeight: 18,
     marginBottom: 4,
@@ -325,7 +365,7 @@ const styles = StyleSheet.create({
   },
   indexCard: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     gap: 2,
     marginBottom: 12,
@@ -334,19 +374,27 @@ const styles = StyleSheet.create({
   },
   list: { paddingBottom: 90, paddingHorizontal: 16 },
   modeRow: { flexDirection: 'row', gap: 8, marginBottom: 10, paddingHorizontal: 16 },
-  rank: { fontSize: 24, width: 36, textAlign: 'center' },
-  shareFab: {
+  rank: { alignItems: 'center', borderRadius: 14, height: 44, justifyContent: 'center', width: 44 },
+  rankText: { fontSize: 18, fontWeight: '800' },
+  score: { alignItems: 'flex-end', gap: 3 },
+  scoreNumber: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
+  shareFill: {
     alignItems: 'center',
     borderRadius: 24,
-    bottom: 20,
-    elevation: 4,
+    flexDirection: 'row',
+    gap: 8,
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 13,
+  },
+  verifiedRow: { alignItems: 'center', flexDirection: 'row', gap: 4, marginTop: 3 },
+  shareFab: {
+    borderRadius: 24,
+    bottom: 20,
+    elevation: 6,
     position: 'absolute',
     right: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
   },
 });

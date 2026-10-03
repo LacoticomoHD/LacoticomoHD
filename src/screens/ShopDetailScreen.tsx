@@ -8,7 +8,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -17,6 +16,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { FeatureBadges } from '@/components/FeatureBadges';
 import { OpeningHoursTable } from '@/components/OpeningHoursTable';
+import { Icon, type IconName } from '@/components/Icon';
+import { StarRating } from '@/components/StarRating';
 import {
   addFavorite,
   fetchFavoriteIds,
@@ -48,29 +49,25 @@ import {
   ShopFeatureSummary,
   ShopRatingSummary,
 } from '@/types';
-
-// „Glut"-Verlauf: Paprika → Orange, die Marken-Signatur der App.
-const GLUT: [string, string, string] = ['#C0392B', '#D35400', '#E67E22'];
-
-/** Balkenfarbe je nach Wert: stark = grün, solide = gold, schwach = rot. */
-function barColor(value: number): string {
-  if (value >= 4.25) return '#2E7D32';
-  if (value >= 3.25) return '#E67E22';
-  return '#C62828';
-}
+import { Text } from '@/components/AppText';
 
 /** Bewertungsbalken, der beim Öffnen sanft von 0 auf seinen Wert wächst. */
 function RatingBar({
   value,
   label,
   trackColor,
-  textColor,
+  labelColor,
+  valueColor,
+  fill,
   delay,
 }: {
   value: number;
   label: string;
   trackColor: string;
   textColor: string;
+  labelColor: string;
+  valueColor: string;
+  fill: [string, string];
   delay: number;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -90,11 +87,22 @@ function RatingBar({
   });
   return (
     <View style={styles.barRow}>
-      <Text style={[styles.barLabel, { color: textColor }]}>{label}</Text>
-      <View style={[styles.barTrack, { backgroundColor: trackColor }]}>
-        <Animated.View style={[styles.barFill, { width, backgroundColor: barColor(value) }]} />
+      <View style={styles.barHead}>
+        <Text style={{ color: labelColor, fontSize: 13.5 }}>{label}</Text>
+        <Text style={{ color: valueColor, fontSize: 13.5, fontWeight: '700' }}>
+          {value.toFixed(1).replace('.', ',')}
+        </Text>
       </View>
-      <Text style={[styles.barValue, { color: textColor }]}>{value.toFixed(1)}</Text>
+      <View style={[styles.barTrack, { backgroundColor: trackColor }]}>
+        <Animated.View style={[styles.barFill, { width }]}>
+          <LinearGradient
+            colors={fill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -213,145 +221,178 @@ export function ShopDetailScreen() {
 
   const hoursStatus = openStatus(shop.opening_hours ?? {});
   const avg = summary?.avg_gesamt;
+  const c = theme.colors;
+  const card = [styles.card, { backgroundColor: c.surface, borderColor: c.border }];
+  const goRate = () => {
+    if (!requireAuth()) return;
+    navigation.navigate('RateShop', {
+      shopId: shop.id,
+      shopName: shop.name,
+      latitude: shop.latitude,
+      longitude: shop.longitude,
+    });
+  };
+
+  const prices: { label: string; value: number; highlight?: boolean }[] = [];
+  if (shop.doener_preis != null) prices.push({ label: 'Döner', value: shop.doener_preis });
+  if (shop.doener_gross_preis != null)
+    prices.push({ label: `Döner ${t('detail.large')}`, value: shop.doener_gross_preis });
+  if (shop.dueruem_preis != null) prices.push({ label: 'Dürüm', value: shop.dueruem_preis });
+  if (shop.menue_preis != null)
+    prices.push({ label: t('detail.menu'), value: shop.menue_preis, highlight: true });
+
+  const actions: { key: string; icon: IconName; label: string; onPress: () => void; active?: boolean }[] = [
+    {
+      key: 'rate',
+      icon: 'star',
+      label: t('detail.act.rate'),
+      onPress: () => {
+        tapMedium();
+        goRate();
+      },
+    },
+    {
+      key: 'route',
+      icon: 'navigation',
+      label: t('detail.act.route'),
+      active: showRouteModes,
+      onPress: () => {
+        tapLight();
+        setShowRouteModes((v) => !v);
+      },
+    },
+    {
+      key: 'fav',
+      icon: 'heart',
+      label: isFavorite ? t('detail.act.saved') : t('detail.act.save'),
+      active: isFavorite,
+      onPress: toggleFavorite,
+    },
+    { key: 'share', icon: 'share-2', label: t('detail.act.share'), onPress: shareShop },
+  ];
 
   return (
-    <ScrollView
-      style={{ backgroundColor: theme.colors.background }}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.content}>
       {/* Hero-Kopf im Glut-Verlauf */}
-      <LinearGradient colors={GLUT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+      <LinearGradient
+        colors={theme.gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        {/* Warmer Lichtschein oben rechts */}
+        <LinearGradient
+          colors={['rgba(255,226,170,0.38)', 'rgba(255,226,170,0)']}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.35, y: 0.75 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {theme.dark ? (
+          <LinearGradient
+            colors={['rgba(14,10,9,0)', 'rgba(14,10,9,0.7)']}
+            start={{ x: 0, y: 0.45 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
         {shop.city ? <Text style={styles.heroCity}>{shop.city.toUpperCase()}</Text> : null}
         <Text style={styles.heroName}>{shop.name}</Text>
-        <Text style={styles.heroAddress}>📍 {shop.address}</Text>
-
+        <View style={styles.heroAddressRow}>
+          <Icon name="map-pin" size={13} color="rgba(255,244,232,0.85)" />
+          <Text style={styles.heroAddress}>{shop.address}</Text>
+        </View>
         <View style={styles.heroRow}>
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreNumber}>{avg != null ? avg.toFixed(1) : '–'}</Text>
-            <Text style={styles.scoreOutOf}>/ 5</Text>
-          </View>
-          {shop.doener_preis != null ? (
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>🥙 {formatPrice(shop.doener_preis)}</Text>
-            </View>
-          ) : null}
-          {shop.dueruem_preis != null ? (
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>🌯 {formatPrice(shop.dueruem_preis)}</Text>
-            </View>
-          ) : null}
-          {shop.doener_gross_preis != null ? (
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>
-                🥙 {t('detail.large')} {formatPrice(shop.doener_gross_preis)}
-              </Text>
-            </View>
-          ) : null}
-          {shop.menue_preis != null ? (
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>
-                🍽️ {t('detail.menu')} {formatPrice(shop.menue_preis)}
-              </Text>
-            </View>
-          ) : null}
-          <View style={styles.heroPill}>
-            <Text
+          <View
+            style={[
+              styles.statusPill,
+              hoursStatus === 'open'
+                ? styles.statusOpen
+                : hoursStatus === 'closed'
+                  ? styles.statusClosed
+                  : null,
+            ]}
+          >
+            <View
               style={[
-                styles.heroPillText,
+                styles.statusDot,
                 {
-                  color:
+                  backgroundColor:
                     hoursStatus === 'open'
-                      ? '#B9F6CA'
+                      ? '#5FD98A'
                       : hoursStatus === 'closed'
-                        ? '#FFCDD2'
-                        : 'rgba(255,255,255,0.85)',
+                        ? '#FF8A80'
+                        : 'rgba(255,255,255,0.7)',
                 },
               ]}
-            >
-              ●{' '}
+            />
+            <Text style={styles.statusText}>
               {hoursStatus === 'open'
-                ? t('common.open')
+                ? t('common.openNow')
                 : hoursStatus === 'closed'
                   ? t('common.closed')
                   : t('common.hoursUnknown')}
             </Text>
           </View>
         </View>
-
-        {summary && summary.verifiziert_count > 0 ? (
-          <Text style={styles.heroVerify}>
-            {t('detail.verifiedShare', {
-              v: summary.verifiziert_count,
-              n: summary.rating_count,
-              label: summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings'),
-            })}
-          </Text>
-        ) : null}
       </LinearGradient>
+
+      {/* Bewertungs-Medaillon, ragt in den Kopf hinein */}
+      <View
+        style={[
+          styles.medallion,
+          { backgroundColor: c.surface, borderColor: c.border, shadowColor: theme.dark ? '#000' : theme.glow },
+        ]}
+      >
+        <View style={styles.medallionScore}>
+          <Text style={[styles.medallionNumber, { color: theme.dark ? c.ratingChipText : c.text }]}>
+            {avg != null ? avg.toFixed(1).replace('.', ',') : '–'}
+          </Text>
+          <StarRating value={avg ?? 0} size={14} />
+        </View>
+        <View style={[styles.medallionDivider, { backgroundColor: c.border }]} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '700' }}>
+            {summary && summary.rating_count > 0
+              ? `${summary.rating_count} ${summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings')}`
+              : t('detail.noRatingsBeFirst')}
+          </Text>
+          {summary && summary.verifiziert_count > 0 ? (
+            <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 3 }}>
+              {t('detail.verifiedShare', {
+                v: summary.verifiziert_count,
+                n: summary.rating_count,
+                label: summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings'),
+              })}
+            </Text>
+          ) : null}
+        </View>
+      </View>
 
       {/* Aktions-Leiste */}
       <View style={styles.actionRow}>
-        <Pressable
-          onPress={() => {
-            tapMedium();
-            if (!requireAuth()) return;
-            navigation.navigate('RateShop', {
-              shopId: shop.id,
-              shopName: shop.name,
-              latitude: shop.latitude,
-              longitude: shop.longitude,
-            });
-          }}
-          style={[
-            styles.action,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={styles.actionIcon}>⭐</Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{t('detail.act.rate')}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            tapLight();
-            setShowRouteModes((v) => !v);
-          }}
-          style={[
-            styles.action,
-            {
-              backgroundColor: showRouteModes ? theme.colors.surfaceVariant : theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Text style={styles.actionIcon}>🧭</Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>{t('detail.act.route')}</Text>
-        </Pressable>
-        <Pressable
-          onPress={toggleFavorite}
-          style={[
-            styles.action,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Animated.Text style={[styles.actionIcon, { transform: [{ scale: heartScale }] }]}>
-            {isFavorite ? '❤️' : '🤍'}
-          </Animated.Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
-            {isFavorite ? t('detail.act.saved') : t('detail.act.save')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={shareShop}
-          style={[
-            styles.action,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={styles.actionIcon}>📤</Text>
-          <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
-            {t('detail.act.share')}
-          </Text>
-        </Pressable>
+        {actions.map((a) => (
+          <Pressable
+            key={a.key}
+            onPress={a.onPress}
+            accessibilityLabel={a.label}
+            style={[
+              styles.action,
+              {
+                backgroundColor: a.active ? c.surfaceVariant : c.surface,
+                borderColor: a.active ? c.primary : c.border,
+              },
+            ]}
+          >
+            {a.key === 'fav' ? (
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Icon name="heart" size={20} color={isFavorite ? c.primary : c.text} />
+              </Animated.View>
+            ) : (
+              <Icon name={a.icon} size={20} color={a.key === 'rate' ? c.primary : c.text} />
+            )}
+            <Text style={[styles.actionLabel, { color: c.text }]}>{a.label}</Text>
+          </Pressable>
+        ))}
       </View>
 
       {/* Ausklappbare Verkehrsmittel-Wahl */}
@@ -361,69 +402,49 @@ export function ShopDetailScreen() {
             <Pressable
               key={m.key}
               onPress={() => openDirections(shop.latitude, shop.longitude, m.key)}
-              style={[
-                styles.travelButton,
-                { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.border },
-              ]}
+              style={[styles.travelButton, { backgroundColor: c.surface, borderColor: c.border }]}
             >
-              <Text style={{ fontSize: 20 }}>{m.icon}</Text>
-              <Text style={{ color: theme.colors.text, fontSize: 11, fontWeight: '600' }}>
-                {m.label}
-              </Text>
+              <Icon name={TRAVEL_ICONS[m.key]} size={19} color={c.primary} />
+              <Text style={{ color: c.text, fontSize: 11.5, fontWeight: '600' }}>{m.label}</Text>
             </Pressable>
           ))}
         </View>
       ) : null}
 
-      {/* Bezahlung – direkt sichtbar, eigenes Feld */}
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <View style={styles.paymentRow}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 0 }]}>
-            💳 {t('detail.payment')}
-          </Text>
-          <View style={[styles.paymentBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '800',
-                color:
-                  shop.kartenzahlung === true
-                    ? theme.colors.success
-                    : shop.kartenzahlung === false
-                      ? theme.colors.accent
-                      : theme.colors.textSecondary,
-              }}
-            >
-              {shop.kartenzahlung === true
-                ? `💳 ${t('detail.cardYes')}`
-                : shop.kartenzahlung === false
-                  ? `💵 ${t('detail.cardNo')}`
-                  : t('detail.cardUnknownShort')}
-            </Text>
+      {/* Preise */}
+      {prices.length > 0 ? (
+        <>
+          <Text style={[styles.overline, { color: c.textSecondary }]}>{t('detail.prices')}</Text>
+          <View style={styles.priceGrid}>
+            {prices.map((p) => (
+              <View
+                key={p.label}
+                style={[
+                  styles.priceTile,
+                  p.highlight
+                    ? { backgroundColor: theme.dark ? 'rgba(255,90,30,0.14)' : '#FDF0E4', borderColor: theme.dark ? '#553A30' : '#F0D2B4' }
+                    : { backgroundColor: c.surface, borderColor: c.border },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: p.highlight ? (theme.dark ? c.accent : '#9D5415') : c.textSecondary,
+                    fontSize: 12,
+                    fontWeight: p.highlight ? '700' : '500',
+                  }}
+                  numberOfLines={1}
+                >
+                  {p.label}
+                </Text>
+                <Text style={[styles.priceValue, { color: c.text }]}>{formatPrice(p.value)}</Text>
+              </View>
+            ))}
           </View>
-        </View>
-        {shop.kartenzahlung == null ? (
-          <Pressable
-            onPress={() => {
-              if (!requireAuth()) return;
-              navigation.navigate('RateShop', {
-                shopId: shop.id,
-                shopName: shop.name,
-                latitude: shop.latitude,
-                longitude: shop.longitude,
-              });
-            }}
-          >
-            <Text style={{ color: theme.colors.primary, fontSize: 13, marginTop: 8 }}>
-              {t('detail.cardUnknownHint')}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+        </>
+      ) : null}
 
-      {/* Preisverlauf */}
       {priceHistory.length >= 2 ? (
-        <Text style={[styles.priceHistory, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.priceHistory, { color: c.textSecondary }]}>
           {t('detail.priceHistory', {
             list: priceHistory.map((p) => formatPrice(p.preis)).join(' → '),
             date: new Date(priceHistory[0].recorded_at).toLocaleDateString(dateLocale, {
@@ -433,9 +454,8 @@ export function ShopDetailScreen() {
           })}
         </Text>
       ) : null}
-
       {shop.preis_bestaetigt_am ? (
-        <Text style={[styles.priceHistory, { color: theme.colors.success }]}>
+        <Text style={[styles.priceHistory, { color: c.success }]}>
           {t('detail.priceConfirmedOn', {
             date: new Date(shop.preis_bestaetigt_am).toLocaleDateString(dateLocale, {
               day: '2-digit',
@@ -446,19 +466,61 @@ export function ShopDetailScreen() {
         </Text>
       ) : null}
 
-      {/* Bewertung im Detail: Balken statt Sterne-Reihen */}
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <View style={styles.summaryHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {t('detail.ratingDetail')}
-          </Text>
-          {summary && summary.rating_count > 0 ? (
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {summary.rating_count}{' '}
-              {summary.rating_count === 1 ? t('detail.rating') : t('detail.ratings')}
-            </Text>
-          ) : null}
+      {/* Bezahlung – direkt sichtbar, eigenes Feld */}
+      <View style={[card, styles.paymentRow]}>
+        <View
+          style={[
+            styles.paymentIcon,
+            {
+              backgroundColor:
+                shop.kartenzahlung === true
+                  ? theme.dark
+                    ? 'rgba(95,217,138,0.14)'
+                    : '#E4F3E8'
+                  : c.surfaceVariant,
+            },
+          ]}
+        >
+          <Icon
+            name="credit-card"
+            size={20}
+            color={
+              shop.kartenzahlung === true
+                ? c.success
+                : shop.kartenzahlung === false
+                  ? c.accent
+                  : c.textSecondary
+            }
+          />
         </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: c.text, fontSize: 15, fontWeight: '700' }}>
+            {shop.kartenzahlung === true
+              ? t('detail.cardYes')
+              : shop.kartenzahlung === false
+                ? t('detail.cardNo')
+                : `${t('detail.payment')}: ${t('detail.cardUnknownShort')}`}
+          </Text>
+          {shop.kartenzahlung == null ? (
+            <Pressable onPress={goRate}>
+              <Text style={{ color: c.primary, fontSize: 12.5, fontWeight: '600', marginTop: 3 }}>
+                {t('detail.cardUnknownHint')}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={{ color: c.textSecondary, fontSize: 12.5, marginTop: 2 }}>
+              {t('detail.payment')}
+            </Text>
+          )}
+        </View>
+        {shop.kartenzahlung === true ? <Icon name="check" size={20} color={c.success} /> : null}
+      </View>
+
+      {/* Bewertung im Detail */}
+      <View style={card}>
+        <Text style={[styles.overlineInCard, { color: c.textSecondary }]}>
+          {t('detail.ratingDetail')}
+        </Text>
         {summary && summary.rating_count > 0 ? (
           RATING_CATEGORIES.map((cat, i) => {
             const avgCat = summary[`avg_${cat}`];
@@ -469,105 +531,94 @@ export function ShopDetailScreen() {
                 key={cat}
                 value={avgCat}
                 label={categoryLabel(cat)}
-                trackColor={theme.colors.surfaceVariant}
-                textColor={theme.colors.text}
+                trackColor={c.surfaceVariant}
+                textColor={c.text}
+                labelColor={theme.dark ? '#D8CBC1' : '#44392F'}
+                valueColor={theme.dark ? c.ratingChipText : c.text}
+                fill={theme.gradients.primary}
                 delay={i * 90}
               />
             );
           })
         ) : (
-          <Text style={{ color: theme.colors.textSecondary }}>
-            {t('detail.noRatingsBeFirst')}
-          </Text>
+          <Text style={{ color: c.textSecondary }}>{t('detail.noRatingsBeFirst')}</Text>
         )}
       </View>
 
       {/* Besonderheiten */}
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.features')}</Text>
+      <View style={card}>
+        <Text style={[styles.overlineInCard, { color: c.textSecondary }]}>{t('detail.features')}</Text>
         <FeatureBadges
           features={featureSummary.filter((f) => f.score > 0).map((f) => f.feature)}
           counts={Object.fromEntries(
             featureSummary.filter((f) => f.score > 0).map((f) => [f.feature, f.bestaetigt])
           ) as Partial<Record<ShopFeature, number>>}
         />
-        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 10 }}>
+        <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 10 }}>
           {t('detail.featuresHint')}
         </Text>
       </View>
 
       {/* Öffnungszeiten */}
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{t('detail.hours')}</Text>
+      <View style={card}>
+        <Text style={[styles.overlineInCard, { color: c.textSecondary }]}>{t('detail.hours')}</Text>
         {hoursStatus === 'unknown' ? (
           <Pressable
             onPress={() => {
               if (!requireAuth()) return;
               navigation.navigate('EditShop', { shopId: shop.id });
             }}
+            style={styles.inlineRow}
           >
-            <Text style={{ color: theme.colors.primary, fontSize: 14, lineHeight: 20 }}>
-              🕐 {t('detail.hoursUnknownHint')}
+            <Icon name="clock" size={16} color={c.primary} />
+            <Text style={{ color: c.primary, flex: 1, fontSize: 14, lineHeight: 20 }}>
+              {t('detail.hoursUnknownHint')}
             </Text>
           </Pressable>
         ) : (
           <>
             {hoursVotes && hoursVotes.score <= -2 ? (
-              <Text style={{ color: theme.colors.danger, fontSize: 13, marginBottom: 8 }}>
+              <Text style={{ color: c.danger, fontSize: 13, marginBottom: 8 }}>
                 {t('detail.hoursOutdated')}
               </Text>
             ) : null}
             <OpeningHoursTable hours={shop.opening_hours ?? {}} />
-            <View style={[styles.hoursVoteRow, { borderTopColor: theme.colors.border }]}>
-              <Text style={{ color: theme.colors.textSecondary, flex: 1, fontSize: 13 }}>
+            <View style={[styles.hoursVoteRow, { borderTopColor: c.border }]}>
+              <Text style={{ color: c.textSecondary, flex: 1, fontSize: 13 }}>
                 {t('detail.hoursConfirm')}
               </Text>
-              <Pressable
-                onPress={() => voteHours(1)}
-                style={[
-                  styles.hoursVoteButton,
-                  {
-                    backgroundColor:
-                      myHoursVote === 1 ? theme.colors.success : theme.colors.surfaceVariant,
-                  },
-                ]}
-              >
-                <Text style={{ color: myHoursVote === 1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
-                  👍 {hoursVotes?.bestaetigt ?? 0}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => voteHours(-1)}
-                style={[
-                  styles.hoursVoteButton,
-                  {
-                    backgroundColor:
-                      myHoursVote === -1 ? theme.colors.danger : theme.colors.surfaceVariant,
-                  },
-                ]}
-              >
-                <Text style={{ color: myHoursVote === -1 ? theme.colors.onPrimary : theme.colors.text, fontSize: 13 }}>
-                  👎 {hoursVotes?.veraltet ?? 0}
-                </Text>
-              </Pressable>
+              {([1, -1] as const).map((v) => {
+                const active = myHoursVote === v;
+                const color = active ? c.onPrimary : c.text;
+                return (
+                  <Pressable
+                    key={v}
+                    onPress={() => voteHours(v)}
+                    style={[
+                      styles.hoursVoteButton,
+                      {
+                        backgroundColor: active
+                          ? v === 1
+                            ? c.success
+                            : c.danger
+                          : c.surfaceVariant,
+                      },
+                    ]}
+                  >
+                    <Icon name={v === 1 ? 'thumbs-up' : 'thumbs-down'} size={14} color={color} />
+                    <Text style={{ color, fontSize: 13, fontWeight: '600' }}>
+                      {v === 1 ? (hoursVotes?.bestaetigt ?? 0) : (hoursVotes?.veraltet ?? 0)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </>
         )}
       </View>
 
       <View style={styles.ctaWrap}>
-        <Button
-          title={t('detail.rateNow')}
-          onPress={() => {
-            if (!requireAuth()) return;
-            navigation.navigate('RateShop', {
-              shopId: shop.id,
-              shopName: shop.name,
-              latitude: shop.latitude,
-              longitude: shop.longitude,
-            });
-          }}
-        />
+        <Button title={t('detail.rateNow')} onPress={goRate} />
       </View>
 
       <Pressable
@@ -575,95 +626,90 @@ export function ShopDetailScreen() {
           if (!requireAuth()) return;
           navigation.navigate('EditShop', { shopId: shop.id });
         }}
-        style={styles.reportLink}
+        style={[styles.reportLink, styles.inlineRow]}
       >
-        <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
-          {t('detail.edit')}
-        </Text>
+        <Icon name="edit-2" size={14} color={c.primary} />
+        <Text style={{ color: c.primary, fontSize: 13, fontWeight: '600' }}>{t('detail.edit')}</Text>
       </Pressable>
       <Pressable
         onPress={() => {
           if (!requireAuth()) return;
           navigation.navigate('ReportShop', { shopId: shop.id, shopName: shop.name });
         }}
-        style={styles.reportLink}
+        style={[styles.reportLink, styles.inlineRow]}
       >
-        <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
-          {t('detail.report')}
-        </Text>
+        <Icon name="flag" size={14} color={c.textSecondary} />
+        <Text style={{ color: c.textSecondary, fontSize: 13 }}>{t('detail.report')}</Text>
       </Pressable>
     </ScrollView>
   );
 }
 
+const TRAVEL_ICONS: Record<string, IconName> = {
+  driving: 'truck',
+  walking: 'user',
+  bicycling: 'activity',
+  transit: 'map',
+};
+
 const styles = StyleSheet.create({
   action: {
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     flex: 1,
-    paddingVertical: 10,
+    gap: 5,
+    paddingVertical: 12,
   },
-  actionIcon: { fontSize: 18, marginBottom: 2 },
-  actionLabel: { fontSize: 11, fontWeight: '700' },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingHorizontal: 16,
-  },
-  barFill: { borderRadius: 4, height: '100%' },
-  barLabel: { fontSize: 12.5, width: 116 },
-  barRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 5 },
-  barTrack: { borderRadius: 4, flex: 1, height: 8, overflow: 'hidden' },
-  barValue: {
-    fontSize: 13,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '800',
-    textAlign: 'right',
-    width: 28,
-  },
+  actionLabel: { fontSize: 11.5, fontWeight: '600' },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 14, paddingHorizontal: 16 },
+  barFill: { borderRadius: 4, height: '100%', overflow: 'hidden' },
+  barRow: { paddingVertical: 6 },
+  barHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  barTrack: { borderRadius: 4, height: 7, overflow: 'hidden' },
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginHorizontal: 16,
-    marginTop: 14,
+    marginTop: 12,
     padding: 16,
   },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   content: { paddingBottom: 40 },
-  ctaWrap: { marginHorizontal: 16, marginTop: 16 },
+  ctaWrap: { marginHorizontal: 16, marginTop: 18 },
   hero: {
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-    paddingBottom: 18,
-    paddingHorizontal: 18,
-    paddingTop: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
+    paddingBottom: 56,
+    paddingHorizontal: 20,
+    paddingTop: 26,
   },
-  heroAddress: { color: 'rgba(255,255,255,0.85)', fontSize: 12.5, marginBottom: 14 },
+  heroAddress: { color: 'rgba(255,244,232,0.88)', flexShrink: 1, fontSize: 13 },
+  heroAddressRow: { alignItems: 'center', flexDirection: 'row', gap: 6, marginBottom: 14 },
   heroCity: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,244,232,0.8)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.2,
-    marginBottom: 2,
+    letterSpacing: 2,
+    marginBottom: 4,
   },
-  heroName: { color: '#fff', fontSize: 24, fontWeight: '800', letterSpacing: -0.3, marginBottom: 4 },
-  heroPill: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+  heroName: {
+    color: '#FFFFFF',
+    fontSize: 29,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    lineHeight: 33,
+    marginBottom: 6,
   },
-  heroPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   heroRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroVerify: { color: 'rgba(255,255,255,0.92)', fontSize: 11.5, marginTop: 10 },
   hoursVoteButton: {
-    borderRadius: 12,
+    alignItems: 'center',
+    borderRadius: 14,
+    flexDirection: 'row',
+    gap: 5,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   hoursVoteRow: {
     alignItems: 'center',
@@ -673,34 +719,83 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
   },
-  paymentBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  paymentRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  priceHistory: { fontSize: 12, marginHorizontal: 16, marginTop: 10 },
-  reportLink: { alignSelf: 'center', marginTop: 14, padding: 4 },
-  scoreBadge: {
-    alignItems: 'baseline',
-    backgroundColor: '#fff',
+  inlineRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+  medallion: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    elevation: 8,
+    flexDirection: 'row',
+    gap: 14,
+    marginHorizontal: 16,
+    marginTop: -40,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+  },
+  medallionDivider: { alignSelf: 'stretch', width: 1 },
+  medallionNumber: { fontSize: 36, fontWeight: '800', letterSpacing: -1.5, lineHeight: 40 },
+  medallionScore: { alignItems: 'flex-start' },
+  overline: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 8,
+    marginHorizontal: 18,
+    marginTop: 20,
+    textTransform: 'uppercase',
+  },
+  overlineInCard: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  paymentIcon: {
+    alignItems: 'center',
     borderRadius: 14,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  paymentRow: { alignItems: 'center', flexDirection: 'row', gap: 13 },
+  priceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, paddingHorizontal: 16 },
+  priceHistory: { fontSize: 12, marginHorizontal: 18, marginTop: 10 },
+  priceTile: {
+    borderRadius: 18,
+    borderWidth: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  priceValue: { fontSize: 20, fontWeight: '800', letterSpacing: -0.6, marginTop: 3 },
+  reportLink: { alignSelf: 'center', marginTop: 14, padding: 4 },
+  statusClosed: { backgroundColor: 'rgba(120,20,10,0.45)', borderColor: 'rgba(255,138,128,0.5)' },
+  statusDot: { borderRadius: 4, height: 7, width: 7 },
+  statusOpen: { backgroundColor: 'rgba(20,90,45,0.55)', borderColor: 'rgba(95,217,138,0.5)' },
+  statusPill: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 999,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 3,
+    gap: 7,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
-  scoreNumber: { color: '#C0392B', fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
-  scoreOutOf: { color: '#8B7E6C', fontSize: 10, fontWeight: '600' },
-  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
-  summaryHeader: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  statusText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '700' },
   travelButton: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     flex: 1,
-    gap: 2,
-    paddingVertical: 8,
+    gap: 4,
+    paddingVertical: 10,
   },
   travelRow: { flexDirection: 'row', gap: 8, marginTop: 8, paddingHorizontal: 16 },
 });

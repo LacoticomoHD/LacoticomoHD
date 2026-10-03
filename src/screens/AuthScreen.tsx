@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useTheme } from '@/theme/ThemeContext';
+import { Text } from '@/components/AppText';
 
 export function AuthScreen() {
   const { theme } = useTheme();
@@ -74,7 +75,7 @@ export function AuthScreen() {
         style={styles.flex}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.logo}>🥙</Text>
+          <Image source={APP_ICON} style={[styles.logo, { shadowColor: theme.glow }]} />
           <Text style={[styles.title, { color: theme.colors.text }]}>Don Döner</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
             {t('auth.tagline')}
@@ -140,10 +141,13 @@ export function AuthScreen() {
   );
 }
 
+// Das App-Icon (Neon-Spieß) als Logo – gleiche Optik wie auf dem Startbildschirm.
+const APP_ICON = require('../../assets/icon.png');
+
 const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   demoBanner: {
-    borderRadius: 12,
+    borderRadius: 16,
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 20,
@@ -152,9 +156,18 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   forgotText: { fontSize: 14, marginTop: 12, textAlign: 'center' },
   langWrap: { marginBottom: 24 },
-  logo: { fontSize: 64, textAlign: 'center' },
+  logo: {
+    alignSelf: 'center',
+    borderRadius: 24,
+    height: 96,
+    marginBottom: 6,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    width: 96,
+  },
   safe: { flex: 1 },
   subtitle: { fontSize: 15, marginBottom: 32, textAlign: 'center' },
   switchText: { fontSize: 15, fontWeight: '600', marginTop: 20, textAlign: 'center' },
-  title: { fontSize: 34, fontWeight: '800', marginTop: 8, textAlign: 'center' },
+  title: { fontSize: 34, fontWeight: '800', letterSpacing: -1, marginTop: 14, textAlign: 'center' },
 });
