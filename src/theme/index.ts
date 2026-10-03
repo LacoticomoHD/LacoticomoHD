@@ -1,3 +1,10 @@
+import { Platform } from 'react-native';
+
+/** Im Browser eine Ersatzschrift anhängen: Lädt die Webschrift bei schwachem
+ *  Netz nicht, erscheint sonst Times New Roman statt einer serifenlosen Schrift. */
+const font = (name: string) =>
+  Platform.OS === 'web' ? `${name}, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` : name;
+
 export interface Theme {
   dark: boolean;
   colors: {
@@ -71,11 +78,11 @@ export const lightTheme: Theme = {
   glow: '#4E361C',
   radius: { card: 20, pill: 22 },
   fonts: {
-    regular: 'Manrope_400Regular',
-    medium: 'Manrope_500Medium',
-    semibold: 'Manrope_600SemiBold',
-    bold: 'Manrope_700Bold',
-    extrabold: 'Manrope_800ExtraBold',
+    regular: font('Manrope_400Regular'),
+    medium: font('Manrope_500Medium'),
+    semibold: font('Manrope_600SemiBold'),
+    bold: font('Manrope_700Bold'),
+    extrabold: font('Manrope_800ExtraBold'),
   },
 };
 
@@ -110,10 +117,10 @@ export const darkTheme: Theme = {
   glow: '#FF601C',
   radius: { card: 20, pill: 22 },
   fonts: {
-    regular: 'SpaceGrotesk_400Regular',
-    medium: 'SpaceGrotesk_500Medium',
-    semibold: 'SpaceGrotesk_600SemiBold',
-    bold: 'SpaceGrotesk_700Bold',
-    extrabold: 'SpaceGrotesk_700Bold',
+    regular: font('SpaceGrotesk_400Regular'),
+    medium: font('SpaceGrotesk_500Medium'),
+    semibold: font('SpaceGrotesk_600SemiBold'),
+    bold: font('SpaceGrotesk_700Bold'),
+    extrabold: font('SpaceGrotesk_700Bold'),
   },
 };
