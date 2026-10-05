@@ -50,7 +50,8 @@ export function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: theme.colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // Auch auf Android: Im Randlos-Modus schiebt das System den Inhalt nicht mehr hoch.
+        behavior="padding"
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Image source={APP_ICON} style={[styles.logo, { shadowColor: theme.glow }]} />

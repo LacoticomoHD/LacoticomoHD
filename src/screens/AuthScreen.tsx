@@ -71,7 +71,8 @@ export function AuthScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Auch auf Android: Im Randlos-Modus schiebt das System den Inhalt nicht mehr hoch.
+        behavior="padding"
         style={styles.flex}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

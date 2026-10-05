@@ -27,6 +27,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
+import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
 import { darkStyleUrl } from '@/lib/mapStyle';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -69,6 +70,7 @@ if (typeof document !== 'undefined' && !document.getElementById('dd-map-dark-css
   const el = document.createElement('style');
   el.id = 'dd-map-dark-css';
   el.textContent = `
+    .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: ${SHEET_PEEK}px; }
     .dd-dark .maplibregl-ctrl-attrib { background: rgba(26,19,17,0.85) !important; color: #A4958A; }
     .dd-dark .maplibregl-ctrl-attrib a { color: #A4958A !important; }
     .dd-dark .maplibregl-ctrl-attrib-button { filter: invert(1); background-color: transparent; }
@@ -96,6 +98,10 @@ export function MapScreen() {
   const [truncated, setTruncated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
+  // Für die Hochzieh-Liste: eigener Standort (falls freigegeben) bzw. Kartenmitte.
+  const [userPos, setUserPos] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [zoomedOut, setZoomedOut] = useState(false);
 
   const loadVisibleShops = useCallback(async () => {
     const map = mapRef.current;
@@ -107,11 +113,15 @@ export function MapScreen() {
       minLon: b.getWest(),
       maxLon: b.getEast(),
     };
+    const c = map.getCenter();
+    setMapCenter({ latitude: c.lat, longitude: c.lng });
     if (bounds.maxLat - bounds.minLat > 3.5) {
       setShops([]);
       setTruncated(false);
+      setZoomedOut(true);
       return;
     }
+    setZoomedOut(false);
     try {
       const found = await fetchShopsInBounds(bounds);
       setShops(found);
@@ -200,12 +210,13 @@ export function MapScreen() {
         .query({ name: 'geolocation' as PermissionName })
         .then((status) => {
           if (status.state === 'granted') {
-            navigator.geolocation.getCurrentPosition((pos) =>
+            navigator.geolocation.getCurrentPosition((pos) => {
+              setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
               map.jumpTo({
                 center: [pos.coords.longitude, pos.coords.latitude],
                 zoom: 13,
-              })
-            );
+              });
+            });
           }
         })
         .catch(() => {});
@@ -220,10 +231,12 @@ export function MapScreen() {
   }, []);
 
   // Läden (inkl. Filter) in die Kreis-Ebene schreiben
+  const visibleShops = useMemo(() => shops.filter(matchesFilters), [shops, matchesFilters]);
+
   const shopFeatures = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',
-      features: shops.filter(matchesFilters).map((shop) => ({
+      features: visibleShops.map((shop) => ({
         type: 'Feature' as const,
         id: shop.id,
         geometry: { type: 'Point' as const, coordinates: [shop.longitude, shop.latitude] },
@@ -234,7 +247,7 @@ export function MapScreen() {
         },
       })),
     }),
-    [shops, matchesFilters]
+    [visibleShops]
   );
 
   useEffect(() => {
@@ -288,11 +301,13 @@ export function MapScreen() {
 
   const goToMyLocation = () => {
     navigator.geolocation.getCurrentPosition(
-      (pos) =>
+      (pos) => {
+        setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         mapRef.current?.flyTo({
           center: [pos.coords.longitude, pos.coords.latitude],
           zoom: 14,
-        }),
+        });
+      },
       () =>
         Alert.alert(t('map.locationTitle'), t('map.locationDenied'))
     );
@@ -386,12 +401,20 @@ export function MapScreen() {
           <Icon name="plus" size={28} color={theme.colors.onPrimary} />
         </LinearGradient>
       </Pressable>
+
+      <NearbySheet
+        shops={visibleShops}
+        origin={userPos ?? mapCenter}
+        originIsUser={userPos != null}
+        zoomedOut={zoomedOut}
+        onSelect={(shopId) => navigation.navigate('ShopDetail', { shopId })}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  addFab: { bottom: 24, right: 16, shadowOpacity: 0.45, shadowRadius: 12 },
+  addFab: { bottom: SHEET_PEEK + 16, right: 16, shadowOpacity: 0.45, shadowRadius: 12 },
   fab: {
     alignItems: 'center',
     borderRadius: 28,
@@ -413,7 +436,7 @@ const styles = StyleSheet.create({
     width: 56,
   },
   flex: { flex: 1 },
-  locateFab: { bottom: 92, right: 16 },
+  locateFab: { bottom: SHEET_PEEK + 84, right: 16 },
   searchBox: {
     alignItems: 'center',
     borderRadius: 27,

@@ -5,6 +5,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
 import { StarRating } from '@/components/StarRating';
+import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { TextField } from '@/components/TextField';
 import {
   confirmPrice,
@@ -48,6 +49,7 @@ type VoteState = Partial<Record<ShopFeature, FeatureVote | 0>>;
 
 export function RateShopScreen() {
   const { theme } = useTheme();
+  const keyboardHeight = useKeyboardHeight();
   const { t, categoryLabel, featureLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'RateShop'>>();
@@ -189,7 +191,8 @@ export function RateShopScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: theme.colors.background }}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 40 + keyboardHeight }]}
+      keyboardShouldPersistTaps="handled"
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>
       <Text style={{ color: theme.colors.textSecondary, marginBottom: 8 }}>

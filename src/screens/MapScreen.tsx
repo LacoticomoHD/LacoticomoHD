@@ -33,6 +33,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
+import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
 import { darkStyleUrl } from '@/lib/mapStyle';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -105,6 +106,10 @@ export function MapScreen() {
   const [truncated, setTruncated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
+  // Für die Hochzieh-Liste: eigener Standort (falls freigegeben) bzw. Kartenmitte.
+  const [userPos, setUserPos] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [zoomedOut, setZoomedOut] = useState(false);
 
   // Es wird immer nur der sichtbare Kartenausschnitt geladen (deutschlandweit
   // wären es zu viele Läden auf einmal).
@@ -119,12 +124,18 @@ export function MapScreen() {
         minLon: southWest[0],
         maxLon: northEast[0],
       };
+      setMapCenter({
+        latitude: (bounds.minLat + bounds.maxLat) / 2,
+        longitude: (bounds.minLon + bounds.maxLon) / 2,
+      });
       // Bei sehr weitem Zoom (halb Deutschland sichtbar) nicht laden – erst reinzoomen.
       if (bounds.maxLat - bounds.minLat > 3.5) {
         setShops([]);
         setTruncated(false);
+        setZoomedOut(true);
         return;
       }
+      setZoomedOut(false);
       const found = await fetchShopsInBounds(bounds);
       setShops(found);
       setTruncated(found.length >= BOUNDS_LIMIT);
@@ -154,6 +165,7 @@ export function MapScreen() {
           () => null
         ));
       if (pos) {
+        setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         setCameraJump((prev) => ({
           centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
           zoomLevel: 13,
@@ -166,10 +178,12 @@ export function MapScreen() {
   // Läden als GeoJSON für die GL-Kreis-Ebene. Wichtig: Die Marker sind KEINE
   // einzelnen Views – dadurch bleibt die Kartenstruktur stabil und die Kamera
   // springt beim Nachladen nicht auf die Startposition zurück (Android-Bug).
+  const visibleShops = useMemo(() => shops.filter(matchesFilters), [shops, matchesFilters]);
+
   const shopFeatures = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',
-      features: shops.filter(matchesFilters).map((shop) => ({
+      features: visibleShops.map((shop) => ({
         type: 'Feature' as const,
         id: shop.id,
         geometry: { type: 'Point' as const, coordinates: [shop.longitude, shop.latitude] },
@@ -180,7 +194,7 @@ export function MapScreen() {
         },
       })),
     }),
-    [shops, matchesFilters]
+    [visibleShops]
   );
 
   const onShopPress = (event: OnPressEvent) => {
@@ -222,6 +236,7 @@ export function MapScreen() {
     }
     setHasLocationPermission(true);
     const pos = await Location.getCurrentPositionAsync({});
+    setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
     setCameraJump((prev) => ({
       centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
       zoomLevel: 14,
@@ -236,6 +251,7 @@ export function MapScreen() {
         style={styles.flex}
         mapStyle={theme.dark ? MAP_STYLE_DARK : MAP_STYLE}
         attributionEnabled
+        attributionPosition={{ bottom: SHEET_PEEK + 30, left: 8 }}
         logoEnabled={false}
         onRegionDidChange={loadVisibleShops}
         onDidFinishLoadingMap={loadVisibleShops}
@@ -362,15 +378,23 @@ export function MapScreen() {
           <Icon name="plus" size={28} color={theme.colors.onPrimary} />
         </LinearGradient>
       </Pressable>
+
+      <NearbySheet
+        shops={visibleShops}
+        origin={userPos ?? mapCenter}
+        originIsUser={userPos != null}
+        zoomedOut={zoomedOut}
+        onSelect={(shopId) => navigation.navigate('ShopDetail', { shopId })}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  addFab: { bottom: 24, right: 16, shadowOpacity: 0.45, shadowRadius: 12 },
+  addFab: { bottom: SHEET_PEEK + 16, right: 16, shadowOpacity: 0.45, shadowRadius: 12 },
   attribution: {
     borderRadius: 4,
-    bottom: 4,
+    bottom: SHEET_PEEK + 6,
     left: 4,
     opacity: 0.85,
     paddingHorizontal: 6,
@@ -398,7 +422,7 @@ const styles = StyleSheet.create({
     width: 56,
   },
   flex: { flex: 1 },
-  locateFab: { bottom: 92, right: 16 },
+  locateFab: { bottom: SHEET_PEEK + 84, right: 16 },
   searchBox: {
     alignItems: 'center',
     borderRadius: 27,

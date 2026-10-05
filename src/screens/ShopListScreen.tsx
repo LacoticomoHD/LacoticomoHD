@@ -1,23 +1,21 @@
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
-import { PressableScale } from '@/components/PressableScale';
-import { StarRating } from '@/components/StarRating';
 import { TextField } from '@/components/TextField';
 import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds, searchShops } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
-import { distanceKm, formatDistance, formatPrice } from '@/lib/geo';
-import { openStatus } from '@/lib/openingHours';
+import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import { ShopWithSummary } from '@/types';
 import { Text } from '@/components/AppText';
+import { ShopRow } from '@/components/ShopRow';
 
 // Ohne Standort/Suche zeigt die Liste die Region Karlsruhe (Start-Community).
 const DEFAULT_CENTER = { latitude: 49.0093, longitude: 8.4044 };
@@ -31,23 +29,11 @@ interface Coords {
   longitude: number;
 }
 
-const PINS = {
-  light: {
-    open: require('../../assets/markers/pin-open-light.png'),
-    closed: require('../../assets/markers/pin-closed-light.png'),
-  },
-  dark: {
-    open: require('../../assets/markers/pin-open-dark.png'),
-    closed: require('../../assets/markers/pin-closed-dark.png'),
-  },
-};
-
 export function ShopListScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { matchesFilters } = useFilters();
-  const { t, featureLabel } = useI18n();
-  const pins = theme.dark ? PINS.dark : PINS.light;
+  const { t } = useI18n();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('rating');
@@ -194,165 +180,26 @@ export function ShopListScreen() {
               : t('list.emptyFilter')}
           </Text>
         }
-        renderItem={({ item }) => {
-          const status = openStatus(item.opening_hours ?? {});
-          const avg = item.summary?.avg_gesamt;
-          const dist = position
-            ? distanceKm(position.latitude, position.longitude, item.latitude, item.longitude)
-            : null;
-          const open = status === 'open';
-          const features = (item.features ?? []).slice(0, 3).map((f) => featureLabel(f));
-          return (
-            <PressableScale
-              onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                  shadowColor: theme.dark ? '#000' : theme.glow,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.tile,
-                  open
-                    ? {
-                        backgroundColor: theme.dark ? 'rgba(255,90,30,0.14)' : 'rgba(192,57,43,0.08)',
-                        borderColor: theme.dark ? '#45302A' : 'rgba(192,57,43,0.2)',
-                      }
-                    : { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.border },
-                ]}
-              >
-                <Image
-                  source={open ? pins.open : pins.closed}
-                  style={styles.tilePin}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={[styles.cardName, { color: theme.colors.text }]} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.metaLine} numberOfLines={1}>
-                  <Text
-                    style={{
-                      color:
-                        status === 'open'
-                          ? theme.colors.success
-                          : status === 'closed'
-                            ? theme.colors.danger
-                            : theme.colors.textSecondary,
-                      fontWeight: '700',
-                    }}
-                  >
-                    {status === 'open'
-                      ? t('common.open')
-                      : status === 'closed'
-                        ? t('common.closed')
-                        : t('common.hoursUnknown')}
-                  </Text>
-                  {dist != null ? (
-                    <Text style={{ color: theme.colors.textSecondary }}>{`  ·  ${formatDistance(dist)}`}</Text>
-                  ) : null}
-                  {item.doener_preis != null ? (
-                    <Text style={{ color: theme.colors.textSecondary }}>
-                      {`  ·  ${formatPrice(item.doener_preis)}`}
-                    </Text>
-                  ) : null}
-                </Text>
-                {features.length > 0 ? (
-                  <Text
-                    style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 3 }}
-                    numberOfLines={1}
-                  >
-                    {features.join(' · ')}
-                  </Text>
-                ) : null}
-              </View>
-              {avg != null ? (
-                <View
-                  style={[
-                    styles.ratingChip,
-                    { backgroundColor: theme.colors.ratingChip, borderColor: theme.colors.ratingChipBorder },
-                  ]}
-                >
-                  <Text style={{ color: theme.colors.star, fontSize: 12 }}>★</Text>
-                  <Text style={{ color: theme.colors.ratingChipText, fontSize: 14, fontWeight: '800' }}>
-                    {avg.toFixed(1).replace('.', ',')}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 11.5 }}>
-                  {t('common.noRating')}
-                </Text>
-              )}
-            </PressableScale>
-          );
-        }}
+        renderItem={({ item }) => (
+          <ShopRow
+            shop={item}
+            distance={
+              position
+                ? distanceKm(position.latitude, position.longitude, item.latitude, item.longitude)
+                : null
+            }
+            onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
+          />
+        )}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    elevation: 2,
-    flexDirection: 'row',
-    gap: 13,
-    marginBottom: 10,
-    padding: 12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-  },
-  cardBody: { flex: 1, minWidth: 0 },
-  metaLine: { fontSize: 12.5, marginTop: 3 },
-  ratingChip: {
-    alignItems: 'center',
-    borderRadius: 15,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 4,
-    height: 30,
-    paddingHorizontal: 10,
-  },
-  tile: {
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 54,
-    justifyContent: 'center',
-    width: 54,
-  },
-  tilePin: { height: 30, width: 22 },
-  cardFooter: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  cardHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'space-between',
-  },
-  cardName: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
   empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   list: { paddingBottom: 24, paddingHorizontal: 16, paddingTop: 4 },
-  metaRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  ratingRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   searchWrap: { paddingHorizontal: 16, paddingTop: 12 },
   sortChip: {
     borderRadius: 16,

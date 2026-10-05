@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
+import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { TextField } from '@/components/TextField';
 import { createReport } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
@@ -14,6 +15,7 @@ import { Text } from '@/components/AppText';
 
 export function ReportShopScreen() {
   const { theme } = useTheme();
+  const keyboardHeight = useKeyboardHeight();
   const { t, reportReasonLabel } = useI18n();
   const { user } = useAuth();
   const route = useRoute<RouteProp<RootStackParamList, 'ReportShop'>>();
@@ -46,7 +48,7 @@ export function ReportShopScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: theme.colors.background }}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 40 + keyboardHeight }]}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>

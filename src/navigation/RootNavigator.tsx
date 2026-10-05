@@ -90,11 +90,11 @@ function Tabs() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarLabelStyle: { fontFamily: theme.fonts.semibold, fontSize: 11 },
+        // Keine feste Höhe: Sonst überlagert die Android-Navigationsleiste
+        // (Zurück/Home) die Tabs – die Höhe des Systembereichs kommt automatisch dazu.
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          height: 64,
-          paddingTop: 6,
         },
         tabBarIcon: ({ focused, color }) => (
           <Icon name={TAB_ICONS[route.name]} size={22} color={focused ? color : theme.colors.textSecondary} />
