@@ -22,7 +22,7 @@ const DATENSCHUTZ = [
   },
   {
     title: '2. Welche Daten wir verarbeiten',
-    text: 'Konto: Beim Registrieren speichern wir deine E-Mail-Adresse und ein verschlüsseltes Passwort. Bewertungen: Deine Sternebewertungen werden mit deinem Konto verknüpft gespeichert; anderen Nutzern werden nur anonyme Durchschnittswerte angezeigt. Meldungen: Meldest du einen fehlerhaften Eintrag, speichern wir Grund und optionale Details.',
+    text: 'Konto: Beim Registrieren speichern wir deine E-Mail-Adresse und ein verschlüsseltes Passwort. Bewertungen: Deine Sternebewertungen werden mit deinem Konto verknüpft gespeichert; anderen Nutzern werden nur anonyme Durchschnittswerte angezeigt. Meldungen: Meldest du einen fehlerhaften Eintrag, speichern wir Grund und optionale Details. Fotos: Lädst du ein Foto hoch, ist es für alle sichtbar; gespeichert wird es mit deinem Konto verknüpft, angezeigt wird aber nur das Datum, nicht dein Name. Lade bitte keine Fotos hoch, auf denen Personen erkennbar sind. Du kannst eigene Fotos jederzeit selbst löschen.',
   },
   {
     title: '3. Standort',
@@ -30,11 +30,11 @@ const DATENSCHUTZ = [
   },
   {
     title: '4. Hosting und Drittanbieter',
-    text: 'Die Daten liegen bei Supabase (Datenbank und Login). Die Karte lädt Kartenkacheln von OpenStreetMap-Servern, die Adresssuche nutzt Nominatim (OpenStreetMap); dabei wird technisch bedingt deine IP-Adresse an diese Dienste übertragen. Kartendaten © OpenStreetMap-Mitwirkende.',
+    text: 'Die Daten und hochgeladenen Fotos liegen bei Supabase (Datenbank, Login und Speicher, Rechenzentrum in Frankfurt). Die Karte lädt Kartenkacheln von MapTiler, die Adresssuche nutzt Nominatim (OpenStreetMap); dabei wird technisch bedingt deine IP-Adresse an diese Dienste übertragen. Kartendaten © MapTiler © OpenStreetMap-Mitwirkende.',
   },
   {
     title: '5. Deine Rechte',
-    text: 'Du hast das Recht auf Auskunft, Berichtigung und Löschung deiner Daten (Art. 15–17 DSGVO). Dein Konto kannst du jederzeit direkt in der App unter Profil → Konto löschen entfernen; dabei werden dein Konto und alle deine Bewertungen unwiderruflich gelöscht. Von dir eingetragene Läden bleiben ohne Personenbezug als Community-Daten erhalten.',
+    text: 'Du hast das Recht auf Auskunft, Berichtigung und Löschung deiner Daten (Art. 15–17 DSGVO). Dein Konto kannst du jederzeit direkt in der App unter Profil → Konto löschen entfernen; dabei werden dein Konto, alle deine Bewertungen und deine Fotos unwiderruflich gelöscht. Von dir eingetragene Läden bleiben ohne Personenbezug als Community-Daten erhalten.',
   },
   {
     title: '6. Speicherdauer',

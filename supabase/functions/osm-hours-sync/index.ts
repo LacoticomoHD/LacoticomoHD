@@ -1,15 +1,27 @@
 // Füllt fehlende Öffnungszeiten aus OpenStreetMap nach.
-// Läuft täglich (pg_cron) und bearbeitet pro Lauf ein Bundesland – so ist jedes
-// Land etwa alle 16 Tage dran. Nur Läden OHNE Zeiten werden befüllt; was Nutzer
-// eingetragen haben, wird nie überschrieben (siehe SQL-Funktion apply_osm_hours).
+// Deutschland ist in 54 Rechteck-Kacheln geteilt (Rechteck-Abfragen sind für die
+// OSM-Server viel günstiger als Abfragen nach Bundesland-Grenzen). Läuft stündlich
+// (pg_cron), eine Kachel pro Lauf – ein kompletter Durchgang dauert gut 2 Tage.
+// Nur Läden OHNE Zeiten werden befüllt; was Nutzer eingetragen haben, wird nie
+// überschrieben (SQL-Funktion apply_osm_hours).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const REGIONS = [
-  'DE-BW', 'DE-BY', 'DE-BE', 'DE-BB', 'DE-HB', 'DE-HH', 'DE-HE', 'DE-MV',
-  'DE-NI', 'DE-NW', 'DE-RP', 'DE-SL', 'DE-SN', 'DE-ST', 'DE-SH', 'DE-TH',
-];
+// Kacheln „K<zeile>-<spalte>" über 47,2–55,3° N und 5,8–15,4° O.
+const LAT0 = 47.2, LAT_STEP = 0.9, ROWS = 9;
+const LON0 = 5.8, LON_STEP = 1.6, COLS = 6;
+const REGIONS = Array.from({ length: ROWS * COLS }, (_, i) => `K${Math.floor(i / COLS)}-${i % COLS}`);
+
+function bbox(region: string): string {
+  const [r, c] = region.slice(1).split('-').map(Number);
+  const s = LAT0 + r * LAT_STEP, w = LON0 + c * LON_STEP;
+  return [s, w, s + LAT_STEP, w + LON_STEP].map((x) => x.toFixed(2)).join(',');
+}
+
+/** Zeitlimit je OSM-Server – drei Versuche müssen in die 150 s der Funktion passen. */
+const SERVER_TIMEOUT_MS = 40_000;
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ];
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
@@ -65,26 +77,50 @@ export function parseOsmHours(raw: string): Hours | null {
   return Object.keys(result).length > 0 ? result : null;
 }
 
-async function overpass(region: string): Promise<any[]> {
-  const q = `[out:json][timeout:120];
-area["ISO3166-2"="${region}"]->.a;
-nwr(area.a)["amenity"~"^(fast_food|restaurant)$"]["cuisine"~"kebab|doner|döner|turkish",i]["opening_hours"];
-out center tags;`;
-  let lastErr = '';
+interface OsmItem {
+  lat: number;
+  lon: number;
+  name: string;
+  hours: string;
+}
+
+/** Fragt die OSM-Server nacheinander ab. CSV statt JSON hält Antwort und
+ *  Rechenzeit klein. Eine leere Antwort wird beim nächsten Server gegengeprüft
+ *  (manche Server liefern bei Überlast leer statt mit Fehler). */
+async function overpass(region: string): Promise<{ items: OsmItem[]; server: string }> {
+  const q = `[out:csv(::lat,::lon,name,opening_hours;false;"\t")][timeout:35][bbox:${bbox(region)}];
+nwr["amenity"~"^(fast_food|restaurant)$"]["cuisine"~"kebab|doner|döner|turkish",i]["opening_hours"];
+out center;`;
+  const errors: string[] = [];
+  let emptyServer: string | null = null;
   for (const url of OVERPASS) {
+    const host = new URL(url).host;
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        body: new URLSearchParams({ data: q }),
-        headers: { 'User-Agent': 'DonDoener-HoursSync/1.0 (lacoticomohd.github.io)' },
+      // GET statt POST: overpass-api.de weist POST aus Cloud-Funktionen mit 406 ab.
+      const res = await fetch(`${url}?data=${encodeURIComponent(q)}`, {
+        headers: { 'User-Agent': 'DonDoener-HoursSync/1.1 (lacoticomohd.github.io)', Accept: '*/*' },
+        signal: AbortSignal.timeout(SERVER_TIMEOUT_MS),
       });
-      if (res.ok) return (await res.json()).elements ?? [];
-      lastErr = `${url}: HTTP ${res.status}`;
+      if (!res.ok) {
+        errors.push(`${host}: HTTP ${res.status}`);
+        continue;
+      }
+      const items = (await res.text())
+        .split('\n')
+        .map((line) => line.split('\t'))
+        .filter((c) => c.length >= 4 && c[0] && c[1] && c[3])
+        .map(([lat, lon, name, hours]) => ({ lat: +lat, lon: +lon, name, hours }));
+      if (items.length === 0) {
+        emptyServer ??= host;
+        continue;
+      }
+      return { items, server: host };
     } catch (e) {
-      lastErr = `${url}: ${e}`;
+      errors.push(`${host}: ${e}`);
     }
   }
-  throw new Error(lastErr);
+  if (emptyServer) return { items: [], server: emptyServer };
+  throw new Error(errors.join(' | '));
 }
 
 Deno.serve(async (req) => {
@@ -97,26 +133,31 @@ Deno.serve(async (req) => {
     return Response.json({ skipped: 'zu kurz nach dem letzten Lauf' }, { status: 429 });
   }
 
-  const url = new URL(req.url);
-  const day = Math.floor(Date.now() / 86400000);
-  const region = REGIONS.includes(url.searchParams.get('region') ?? '')
-    ? url.searchParams.get('region')!
-    : REGIONS[day % REGIONS.length];
+  // Kachel wählen: per ?region=K3-2 oder die, deren letzter ERFOLGREICHER
+  // Abgleich am längsten her ist (nie gelaufene zuerst) – Fehlschläge holen
+  // sich so von selbst nach.
+  let region = new URL(req.url).searchParams.get('region') ?? '';
+  if (!REGIONS.includes(region)) {
+    const { data: ok } = await db
+      .from('osm_sync_log').select('region, ran_at').is('fehler', null)
+      .like('region', 'K%')
+      .order('ran_at', { ascending: false }).limit(1000);
+    const lastOk = new Map<string, number>();
+    for (const r of ok ?? []) {
+      if (!lastOk.has(r.region)) lastOk.set(r.region, new Date(r.ran_at).getTime());
+    }
+    region = [...REGIONS].sort((a, b) => (lastOk.get(a) ?? 0) - (lastOk.get(b) ?? 0))[0];
+  }
 
   try {
-    const elements = await overpass(region);
-    const items = elements
-      .map((e) => ({
-        lat: e.lat ?? e.center?.lat,
-        lon: e.lon ?? e.center?.lon,
-        name: e.tags?.name ?? '',
-        hours: parseOsmHours(e.tags?.opening_hours ?? ''),
-      }))
-      .filter((i) => i.lat && i.lon && i.hours);
+    const { items: raw, server } = await overpass(region);
+    const items = raw
+      .map((e) => ({ lat: e.lat, lon: e.lon, name: e.name, hours: parseOsmHours(e.hours) }))
+      .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lon) && i.hours);
     const { data: updated, error } = await db.rpc('apply_osm_hours', { items });
     if (error) throw new Error(error.message);
     await db.from('osm_sync_log').insert({ region, gefunden: items.length, aktualisiert: updated ?? 0 });
-    return Response.json({ region, gefunden: items.length, aktualisiert: updated });
+    return Response.json({ region, server, osm: raw.length, gefunden: items.length, aktualisiert: updated });
   } catch (e) {
     await db.from('osm_sync_log').insert({ region, fehler: String(e).slice(0, 500) });
     return Response.json({ region, fehler: String(e) }, { status: 502 });

@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   Pressable,
   ScrollView,
   Share,
@@ -17,7 +18,9 @@ import { Button } from '@/components/Button';
 import { FeatureBadges } from '@/components/FeatureBadges';
 import { OpeningHoursTable } from '@/components/OpeningHoursTable';
 import { Icon, type IconName } from '@/components/Icon';
+import { ShopPhotos } from '@/components/ShopPhotos';
 import { StarRating } from '@/components/StarRating';
+import type { ShopPhoto } from '@/lib/photos';
 import {
   addFavorite,
   fetchFavoriteIds,
@@ -126,6 +129,8 @@ export function ShopDetailScreen() {
   const [hoursVotes, setHoursVotes] = useState<HoursVoteSummary | null>(null);
   const [myHoursVote, setMyHoursVote] = useState<1 | -1 | 0>(0);
   const [showRouteModes, setShowRouteModes] = useState(false);
+  const [heroPhoto, setHeroPhoto] = useState<string | null>(null);
+  const onPhotos = useCallback((p: ShopPhoto[]) => setHeroPhoto(p[0]?.url ?? null), []);
   const heartScale = useRef(new Animated.Value(1)).current;
 
   useFocusEffect(
@@ -278,16 +283,30 @@ export function ShopDetailScreen() {
         colors={theme.gradients.hero}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.hero}
+        style={[styles.hero, heroPhoto ? styles.heroWithPhoto : null]}
       >
-        {/* Warmer Lichtschein oben rechts */}
-        <LinearGradient
-          colors={['rgba(255,226,170,0.38)', 'rgba(255,226,170,0)']}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.35, y: 0.75 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {theme.dark ? (
+        {heroPhoto ? (
+          // Gibt es Fotos, wird das neueste zum Titelbild – abgedunkelt, damit
+          // der Name gut lesbar bleibt.
+          <>
+            <Image source={{ uri: heroPhoto }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <LinearGradient
+              colors={['rgba(14,10,9,0.25)', 'rgba(14,10,9,0.35)', 'rgba(14,10,9,0.82)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </>
+        ) : (
+          /* Warmer Lichtschein oben rechts */
+          <LinearGradient
+            colors={['rgba(255,226,170,0.38)', 'rgba(255,226,170,0)']}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0.35, y: 0.75 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        {theme.dark && !heroPhoto ? (
           <LinearGradient
             colors={['rgba(14,10,9,0)', 'rgba(14,10,9,0.7)']}
             start={{ x: 0, y: 0.45 }}
@@ -410,6 +429,9 @@ export function ShopDetailScreen() {
           ))}
         </View>
       ) : null}
+
+      {/* Fotos von Laden und Döner */}
+      <ShopPhotos shopId={shop.id} onPhotos={onPhotos} />
 
       {/* Preise */}
       {prices.length > 0 ? (
@@ -685,6 +707,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 26,
   },
+  // Mit Titelbild etwas höher, Text sitzt unten über dem abgedunkelten Foto.
+  heroWithPhoto: { justifyContent: 'flex-end', minHeight: 300 },
   heroAddress: { color: 'rgba(255,244,232,0.88)', flexShrink: 1, fontSize: 13 },
   heroAddressRow: { alignItems: 'center', flexDirection: 'row', gap: 6, marginBottom: 14 },
   heroCity: {

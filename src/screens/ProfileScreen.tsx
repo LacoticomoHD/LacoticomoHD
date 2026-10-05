@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings, fetchPioneerCount } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { INVITE_APK_URL, INVITE_WEB_URL, inviteFriends } from '@/lib/invite';
+import { deleteAllMyPhotos } from '@/lib/photos';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
 import { RatingWithShop } from '@/types';
@@ -73,6 +74,8 @@ export function ProfileScreen() {
         onPress: async () => {
           setDeleting(true);
           try {
+            // Erst die eigenen Bilddateien, dann das Konto (danach fehlt die Berechtigung).
+            if (user) await deleteAllMyPhotos(user.id).catch(() => {});
             await deleteOwnAccount();
             await signOut();
           } catch (e) {

@@ -56,7 +56,14 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Don Döner braucht Zugriff auf deine Fotos, damit du Bilder von Dönerläden hochladen kannst.",
+          "cameraPermission": "Don Döner braucht die Kamera, damit du Fotos von Dönerläden machen kannst."
+        }
+      ]
     ]
   }
 }
