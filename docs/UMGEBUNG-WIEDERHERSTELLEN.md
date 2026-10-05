@@ -73,3 +73,17 @@ liegen: `node_modules/`, `android/`, `dist/` und vor allem **`.env`**.
 `*-web-app-capable`) einfügen, `dist/404.html` als Kopie davon anlegen,
 `dist/.nojekyll` erzeugen und den Ordner als neuen Commit auf `gh-pages`
 legen (die Datei `don-doener-latest.apk` aus dem vorigen Stand übernehmen).
+
+## Automatischer Öffnungszeiten-Abgleich (OSM)
+
+- Supabase-Funktion `osm-hours-sync` (Quelltext: `supabase/functions/osm-hours-sync/`),
+  aufgerufen stündlich per `pg_cron` (Job `osm-hours-sync`).
+- Pro Lauf eine von 54 Rechteck-Kacheln über Deutschland; die Kachel mit dem
+  ältesten erfolgreichen Abgleich ist zuerst dran – Fehlschläge holen sich so
+  selbst nach.
+- Es werden **nur leere** Öffnungszeiten befüllt (SQL `apply_osm_hours`:
+  gleicher Name im Umkreis von ~60 m bzw. ohne Namen ~20 m). Von Nutzern
+  eingetragene Zeiten werden nie überschrieben.
+- Protokoll: Tabelle `osm_sync_log` (nur mit Admin-/Service-Zugang lesbar).
+- Bekannt: `overpass-api.de` lehnt Anfragen aus Supabase-Funktionen mit 406 ab;
+  die Funktion weicht auf `overpass.kumi.systems` und `overpass.private.coffee` aus.
