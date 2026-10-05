@@ -1,6 +1,8 @@
-import { Session, User } from '@supabase/supabase-js';
+import { AuthError, Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+
+import { useI18n } from '@/i18n/I18nContext';
 
 import { supabase } from './supabase';
 
@@ -42,6 +44,13 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
+  /** Bei Serverfehlern (z. B. Mail-Versand gescheitert) liefert supabase-js die
+   *  rohe HTTP-Antwort als Text – statt dieses Code-Blocks einen lesbaren Satz zeigen. */
+  const readable = (error: AuthError): string =>
+    (error.status ?? 0) >= 500 || error.message.trim().startsWith('{')
+      ? t('auth.serverError')
+      : error.message;
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
@@ -68,14 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error ? error.message : null };
+    return { error: error ? readable(error) : null };
   };
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: resetRedirectTo(),
     });
-    return { error: error ? error.message : null };
+    return { error: error ? readable(error) : null };
   };
 
   /** Setzt das neue Passwort (nach Klick auf den Link aus der Mail). */
