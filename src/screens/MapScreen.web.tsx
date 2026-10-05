@@ -42,7 +42,7 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
 import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
-import { darkStyleUrl } from '@/lib/mapStyle';
+import { darkStyleUrl, loadWarmDarkStyle, useWarmDarkStyle } from '@/lib/mapStyle';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
@@ -78,6 +78,13 @@ const MAP_STYLE: string | maplibregl.StyleSpecification = MAP_STYLE_URL ?? {
 
 const MAP_STYLE_DARK: string | maplibregl.StyleSpecification =
   darkStyleUrl(MAP_STYLE_URL) ?? MAP_STYLE;
+// Umgefärbten dunklen Stil früh vorladen, damit beim Öffnen nichts blau aufblitzt.
+loadWarmDarkStyle(MAP_STYLE_URL);
+
+const currentStyleKey = (dark: boolean, warm: object | null) =>
+  dark ? (warm ? 'dark-warm' : 'dark') : 'light';
+const styleFor = (dark: boolean, warm: object | null): string | maplibregl.StyleSpecification =>
+  dark ? ((warm as maplibregl.StyleSpecification | null) ?? MAP_STYLE_DARK) : MAP_STYLE;
 
 // Dunkle Variante des (lizenzrechtlich nötigen) Copyright-Hinweises der Karte.
 if (typeof document !== 'undefined' && !document.getElementById('dd-map-dark-css')) {
@@ -99,6 +106,10 @@ export function MapScreen() {
   const { theme } = useTheme();
   const darkRef = useRef(theme.dark);
   darkRef.current = theme.dark;
+  const warmDark = useWarmDarkStyle(MAP_STYLE_URL, theme.dark);
+  const warmDarkRef = useRef(warmDark);
+  warmDarkRef.current = warmDark;
+  const appliedStyleRef = useRef('');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const containerRef = useRef<View>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -166,12 +177,16 @@ export function MapScreen() {
   useEffect(() => {
     const container = containerRef.current as unknown as HTMLElement | null;
     if (!container) return;
+    appliedStyleRef.current = currentStyleKey(darkRef.current, warmDarkRef.current);
     const map = new maplibregl.Map({
       container,
-      style: darkRef.current ? MAP_STYLE_DARK : MAP_STYLE,
+      style: styleFor(darkRef.current, warmDarkRef.current),
       center: INITIAL_CENTER,
       zoom: 11,
+      attributionControl: false,
     });
+    // Copyright-Hinweis (Pflicht) links unten, damit er nicht unter dem „+" liegt.
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-left');
     mapRef.current = map;
     container.classList.toggle('dd-dark', darkRef.current);
     // Nur in der Entwicklung: Zugriff für automatisierte Browser-Tests.
@@ -355,19 +370,18 @@ export function MapScreen() {
     (map.getSource('cities') as maplibregl.GeoJSONSource | undefined)?.setData(features);
   }, [clusters]);
 
-  // Theme gewechselt: passenden Kartenstil (hell/dunkel) laden.
-  const firstThemeRun = useRef(true);
+  // Theme gewechselt oder umgefärbter Dunkel-Stil fertig geladen: passenden
+  // Kartenstil setzen (nur wenn er sich wirklich ändert).
   useEffect(() => {
-    if (firstThemeRun.current) {
-      firstThemeRun.current = false;
-      return;
-    }
     const map = mapRef.current;
     if (!map) return;
+    const wanted = currentStyleKey(theme.dark, warmDark);
+    if (wanted === appliedStyleRef.current) return;
+    appliedStyleRef.current = wanted;
     map.getContainer().classList.toggle('dd-dark', theme.dark);
     mapReadyRef.current = false;
-    map.setStyle(theme.dark ? MAP_STYLE_DARK : MAP_STYLE, { diff: false });
-  }, [theme.dark]);
+    map.setStyle(styleFor(theme.dark, warmDark), { diff: false });
+  }, [theme.dark, warmDark]);
 
   // Beim Tab-Wechsel zurück zur Karte: Daten auffrischen
   useFocusEffect(

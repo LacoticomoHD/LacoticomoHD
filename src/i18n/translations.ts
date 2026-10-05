@@ -245,7 +245,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'profile.legal': 'Impressum & Datenschutz',
     'profile.about': 'Über Don Döner',
     'profile.aboutText':
-      'Don Döner ist eine reine Bewertungs-App für Dönerläden. Bewertet wird objektiv mit Sternen in den Kategorien Geschmack, Freundlichkeit, Sauberkeit, Preis-Leistung und Wartezeit. Kartendaten © OpenStreetMap-Mitwirkende, Adresssuche über Nominatim.',
+      'Don Döner ist eine reine Bewertungs-App für Dönerläden. Bewertet wird mit Sternen in den Kategorien Geschmack, Fleischqualität (optional), Soßenqualität, Freundlichkeit, Sauberkeit, Preis-Leistung und Wartezeit. Preise, Kartenzahlung, Besonderheiten und Öffnungszeiten pflegt die Community gemeinsam. Kartendaten © MapTiler © OpenStreetMap-Mitwirkende, Adresssuche über Nominatim.',
     'profile.logout': 'Abmelden',
     'profile.logoutConfirm': 'Möchtest du dich wirklich abmelden?',
     'profile.deleteAccount': 'Konto endgültig löschen',
@@ -543,7 +543,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'profile.legal': 'Imprint & privacy',
     'profile.about': 'About Don Döner',
     'profile.aboutText':
-      'Don Döner is a pure rating app for kebab shops. Rating is objective with stars in the categories taste, friendliness, cleanliness, value and waiting time. Map data © OpenStreetMap contributors, address search via Nominatim.',
+      'Don Döner is a pure rating app for kebab shops. Shops are rated with stars for taste, meat quality (optional), sauce quality, friendliness, cleanliness, value and waiting time. Prices, card payment, features and opening hours are maintained together by the community. Map data © MapTiler © OpenStreetMap contributors, address search via Nominatim.',
     'profile.logout': 'Log out',
     'profile.logoutConfirm': 'Do you really want to log out?',
     'profile.deleteAccount': 'Delete account permanently',
@@ -836,7 +836,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'profile.legal': 'Künye & Gizlilik',
     'profile.about': 'Don Döner hakkında',
     'profile.aboutText':
-      'Don Döner, dönerciler için saf bir değerlendirme uygulamasıdır. Değerlendirme; lezzet, güler yüz, temizlik, fiyat-performans ve bekleme süresi kategorilerinde yıldızlarla objektif yapılır. Harita verileri © OpenStreetMap katkıda bulunanlar, adres araması Nominatim üzerinden.',
+      'Don Döner, dönerciler için saf bir değerlendirme uygulamasıdır. Değerlendirme; lezzet, et kalitesi (isteğe bağlı), sos kalitesi, güler yüz, temizlik, fiyat-performans ve bekleme süresi kategorilerinde yıldızlarla yapılır. Fiyatlar, kartla ödeme, özellikler ve çalışma saatleri topluluk tarafından birlikte güncellenir. Harita verileri © MapTiler © OpenStreetMap katkıda bulunanlar, adres araması Nominatim üzerinden.',
     'profile.logout': 'Çıkış yap',
     'profile.logoutConfirm': 'Gerçekten çıkış yapmak istiyor musun?',
     'profile.deleteAccount': 'Hesabı kalıcı olarak sil',

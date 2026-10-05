@@ -48,7 +48,7 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
 import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
-import { darkStyleUrl } from '@/lib/mapStyle';
+import { darkStyleUrl, loadWarmDarkStyle, useWarmDarkStyle } from '@/lib/mapStyle';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Start: Karlsruhe – hier begann die Community. [Längengrad, Breitengrad]
@@ -98,6 +98,8 @@ const MAP_STYLE: string | object = MAP_STYLE_URL ?? {
 };
 
 const MAP_STYLE_DARK: string | object = darkStyleUrl(MAP_STYLE_URL) ?? MAP_STYLE;
+// Umgefärbten dunklen Stil früh vorladen, damit beim Öffnen nichts blau aufblitzt.
+loadWarmDarkStyle(MAP_STYLE_URL);
 
 const ATTRIBUTION_TEXT = MAP_STYLE_URL?.includes('maptiler')
   ? '© MapTiler © OpenStreetMap-Mitwirkende'
@@ -125,6 +127,7 @@ export function MapScreen() {
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
   const [zoomedOut, setZoomedOut] = useState(false);
   const [clusters, setClusters] = useState<CityCluster[]>([]);
+  const warmDark = useWarmDarkStyle(MAP_STYLE_URL, theme.dark);
 
   // Jede Ladeabfrage bekommt eine Nummer. Kommt eine ältere Antwort erst nach
   // einer neueren an (z. B. nach schnellem Herauszoomen), wird sie verworfen –
@@ -290,7 +293,7 @@ export function MapScreen() {
       <MapView
         ref={mapRef}
         style={styles.flex}
-        mapStyle={theme.dark ? MAP_STYLE_DARK : MAP_STYLE}
+        mapStyle={theme.dark ? (warmDark ?? MAP_STYLE_DARK) : MAP_STYLE}
         attributionEnabled
         attributionPosition={{ bottom: SHEET_PEEK + 30, left: 8 }}
         logoEnabled={false}
