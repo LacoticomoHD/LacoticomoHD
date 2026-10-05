@@ -408,6 +408,14 @@ export async function fetchIsAdmin(userId: string): Promise<boolean> {
   return data != null;
 }
 
+/** Döner-Pass: Anzahl der Läden, bei denen der angemeldete Nutzer die erste
+ *  Bewertung abgegeben hat. */
+export async function fetchPioneerCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('my_pioneer_count');
+  if (error) return 0;
+  return (data as number | null) ?? 0;
+}
+
 /** Alle Meldungen inkl. Ladendaten – per RLS nur für Admins sichtbar. */
 export async function fetchAllReports(): Promise<ReportWithShop[]> {
   const { data, error } = await supabase

@@ -12,6 +12,7 @@ import {
   fetchMyFeatureVotes,
   fetchMyRating,
   fetchShop,
+  fetchShopSummary,
   RatingInput,
   saveFeatureVotes,
   updateDoenerPreis,
@@ -178,11 +179,19 @@ export function RateShopScreen() {
       try {
         if (cardPayment !== originalCard) await updateKartenzahlung(shopId, cardPayment);
       } catch {}
+      // Erste Bewertung dieses Ladens überhaupt? Dann gibt es den Pionier-Hinweis.
+      let pioneer = false;
+      if (!existing) {
+        try {
+          pioneer = (await fetchShopSummary(shopId))?.rating_count === 1;
+        } catch {}
+      }
       tapSuccess();
       Alert.alert(
-        t('rate.thanks'),
+        pioneer ? t('rate.pioneerTitle') : t('rate.thanks'),
         (existing ? t('rate.savedEdit') : t('rate.savedNew')) +
-          (verified ? t('rate.verifiedSuffix') : ''),
+          (verified ? t('rate.verifiedSuffix') : '') +
+          (pioneer ? t('rate.pioneerSuffix') : ''),
         [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } catch (e) {

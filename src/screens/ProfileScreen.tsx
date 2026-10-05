@@ -6,8 +6,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { useI18n } from '@/i18n/I18nContext';
-import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings } from '@/lib/api';
+import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings, fetchPioneerCount } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { INVITE_APK_URL, INVITE_WEB_URL, inviteFriends } from '@/lib/invite';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
 import { RatingWithShop } from '@/types';
@@ -35,12 +36,14 @@ export function ProfileScreen() {
   const [deleting, setDeleting] = useState(false);
   const [myRatings, setMyRatings] = useState<RatingWithShop[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pioneerCount, setPioneerCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
       fetchMyRatings(user.id).then(setMyRatings).catch(() => {});
       fetchIsAdmin(user.id).then(setIsAdmin);
+      fetchPioneerCount().then(setPioneerCount);
     }, [user])
   );
 
@@ -184,7 +187,18 @@ export function ProfileScreen() {
               {cityCount === 1 ? t('profile.passCity') : t('profile.passCities')}
             </Text>
           </View>
+          <View style={styles.passStat}>
+            <Text style={[styles.passNumber, { color: theme.colors.primary }]}>{pioneerCount}</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              {t('profile.passPioneer')}
+            </Text>
+          </View>
         </View>
+        {pioneerCount > 0 ? (
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginTop: 8 }}>
+            {t('profile.pioneerHint', { n: pioneerCount })}
+          </Text>
+        ) : null}
         <Text style={{ color: theme.colors.text, marginTop: 10 }}>
           {badge.currentKey ? t(badge.currentKey) : t('profile.noBadge')}
           {badge.nextKey
@@ -216,6 +230,14 @@ export function ProfileScreen() {
       <LinkRow icon="star" label={t('profile.myRatings')} onPress={() => navigation.navigate('MyRatings')} />
       </>
       ) : null}
+
+      <LinkRow
+        icon="user-plus"
+        label={t('invite.button')}
+        onPress={() =>
+          inviteFriends(t('invite.message', { web: INVITE_WEB_URL, apk: INVITE_APK_URL }))
+        }
+      />
 
       <LinkRow icon="file-text" label={t('profile.legal')} onPress={() => navigation.navigate('Legal')} />
 

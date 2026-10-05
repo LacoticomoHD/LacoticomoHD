@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StarRating } from '@/components/StarRating';
 import { fetchCityStats, fetchTopShops, TOP_MIN_RATINGS, TopShopsMode } from '@/lib/api';
 import { formatPrice } from '@/lib/geo';
+import { INVITE_APK_URL, INVITE_WEB_URL, inviteFriends } from '@/lib/invite';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -176,14 +177,23 @@ export function BestenlisteScreen() {
       </View>
 
       {provisional ? (
-        <Text
-          style={[
-            styles.provisionalNote,
-            { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.textSecondary },
-          ]}
-        >
-          {t('top.provisional', { n: TOP_MIN_RATINGS })}
-        </Text>
+        <View style={[styles.provisionalNote, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
+            {t('top.provisional', { n: TOP_MIN_RATINGS })}
+          </Text>
+          {/* Mehr Bewertende = schneller eine echte Rangliste. */}
+          <Pressable
+            onPress={() =>
+              inviteFriends(t('invite.message', { web: INVITE_WEB_URL, apk: INVITE_APK_URL }))
+            }
+            style={styles.inviteLink}
+          >
+            <Icon name="user-plus" size={15} color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '700' }}>
+              {t('invite.button')}
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
 
       {preisIndex ? (
@@ -355,13 +365,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   cheapList: { borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
   cheapRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  inviteLink: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 8, paddingVertical: 4 },
   provisionalNote: {
     borderRadius: 16,
-    fontSize: 12.5,
-    lineHeight: 18,
     marginBottom: 4,
     marginHorizontal: 16,
-    padding: 10,
+    padding: 12,
   },
   indexCard: {
     alignItems: 'center',
