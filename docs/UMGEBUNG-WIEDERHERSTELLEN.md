@@ -76,14 +76,18 @@ legen (die Datei `don-doener-latest.apk` aus dem vorigen Stand übernehmen).
 
 ## Automatischer Öffnungszeiten-Abgleich (OSM)
 
-- Supabase-Funktion `osm-hours-sync` (Quelltext: `supabase/functions/osm-hours-sync/`),
-  aufgerufen stündlich per `pg_cron` (Job `osm-hours-sync`).
-- Pro Lauf eine von 54 Rechteck-Kacheln über Deutschland; die Kachel mit dem
-  ältesten erfolgreichen Abgleich ist zuerst dran – Fehlschläge holen sich so
-  selbst nach.
+- Läuft täglich als GitHub-Action (`.github/workflows/osm-hours-sync.yml`,
+  Skript `scripts/osm-hours-sync.mjs`); manuell startbar unter
+  „Actions → Öffnungszeiten aus OSM nachladen → Run workflow".
+- Deutschland ist in 54 Rechteck-Kacheln geteilt; jede wird bei Overpass
+  abgefragt und an die Datenbank-Funktion `osm_hours_import` geschickt.
 - Es werden **nur leere** Öffnungszeiten befüllt (SQL `apply_osm_hours`:
   gleicher Name im Umkreis von ~60 m bzw. ohne Namen ~20 m). Von Nutzern
   eingetragene Zeiten werden nie überschrieben.
-- Protokoll: Tabelle `osm_sync_log` (nur mit Admin-/Service-Zugang lesbar).
-- Bekannt: `overpass-api.de` lehnt Anfragen aus Supabase-Funktionen mit 406 ab;
-  die Funktion weicht auf `overpass.kumi.systems` und `overpass.private.coffee` aus.
+- Zugang: GitHub-Secret `OSM_SYNC_TOKEN`. In der Datenbank liegt nur dessen
+  SHA-256-Hash (`private.sync_tokens`). Neues Token: zufälligen Wert erzeugen,
+  Hash in `private.sync_tokens` eintragen, Secret in GitHub ersetzen.
+- Protokoll: Tabelle `osm_sync_log` (eine Zeile je Kachel mit Treffern).
+- Warum nicht als Supabase-Funktion: `overpass-api.de` lehnt Anfragen aus
+  Supabase-Funktionen mit HTTP 406 ab. Die alte Funktion `osm-hours-sync` ist
+  abgeschaltet (Cron-Job `osm-hours-sync` inaktiv).
