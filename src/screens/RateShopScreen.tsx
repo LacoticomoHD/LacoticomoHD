@@ -32,6 +32,8 @@ import {
   ShopFeature,
 } from '@/types';
 import { Text } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
+import { hasOpeningHours } from '@/lib/openingHours';
 
 // UI-Zustand: 0 = noch nicht bewertet. Fleischqualität darf 0 bleiben (optional).
 const EMPTY: Record<RatingCategory, number> = {
@@ -68,6 +70,7 @@ export function RateShopScreen() {
   // Kartenzahlung: true = möglich, false = nur Bar, null = keine Angabe.
   const [cardPayment, setCardPayment] = useState<boolean | null>(null);
   const [originalCard, setOriginalCard] = useState<boolean | null>(null);
+  const [hoursMissing, setHoursMissing] = useState(false);
 
   useEffect(() => {
     fetchShop(shopId)
@@ -75,6 +78,7 @@ export function RateShopScreen() {
         setCurrentPrice(shop.doener_preis);
         setCardPayment(shop.kartenzahlung ?? null);
         setOriginalCard(shop.kartenzahlung ?? null);
+        setHoursMissing(!hasOpeningHours(shop.opening_hours));
       })
       .catch(() => {});
   }, [shopId]);
@@ -321,6 +325,33 @@ export function RateShopScreen() {
         })}
       </View>
 
+      {/* Fehlende Öffnungszeiten: wer gerade dort war, kennt sie oft. */}
+      {hoursMissing ? (
+        <Pressable
+          onPress={() =>
+            (navigation as unknown as { navigate: (s: string, p: object) => void }).navigate(
+              'EditShop',
+              { shopId }
+            )
+          }
+          style={[
+            styles.hoursCard,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.primary },
+          ]}
+        >
+          <Icon name="clock" size={20} color={theme.colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.colors.text, fontSize: 14.5, fontWeight: '700' }}>
+              {t('rate.hoursTitle')}
+            </Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginTop: 2 }}>
+              {t('rate.hoursBody')}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={theme.colors.textSecondary} />
+        </Pressable>
+      ) : null}
+
       {/* Preis-Frischehalter */}
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
         {t('rate.priceCheck')}
@@ -410,6 +441,15 @@ export function RateShopScreen() {
 }
 
 const styles = StyleSheet.create({
+  hoursCard: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    padding: 14,
+  },
   cardChip: {
     alignItems: 'center',
     borderRadius: 16,
