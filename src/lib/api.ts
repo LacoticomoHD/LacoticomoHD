@@ -79,6 +79,28 @@ function mapOverviewRow(row: OverviewRow): ShopWithSummary {
  *  erreicht, weist die Karte darauf hin, dass man hineinzoomen sollte. */
 export const BOUNDS_LIMIT = 1000;
 
+export interface CityCluster {
+  city: string;
+  anzahl: number;
+  lat: number;
+  lon: number;
+}
+
+/** Weit herausgezoomt: statt einzelner Läden Blasen mit der Anzahl je Region,
+ *  benannt nach der größten Stadt darin. Die Rastergröße wächst mit dem
+ *  Ausschnitt (ca. 7 Zellen über die Höhe), damit sich nichts überlappt. */
+export async function fetchCityClusters(bounds: GeoBounds): Promise<CityCluster[]> {
+  const { data, error } = await supabase.rpc('city_clusters', {
+    min_lat: bounds.minLat,
+    max_lat: bounds.maxLat,
+    min_lon: bounds.minLon,
+    max_lon: bounds.maxLon,
+    cell: (bounds.maxLat - bounds.minLat) / 7,
+  });
+  if (error) throw error;
+  return (data ?? []) as CityCluster[];
+}
+
 /** Läden im sichtbaren Kartenausschnitt – die App lädt nie ganz Deutschland auf einmal. */
 export async function fetchShopsInBounds(
   bounds: GeoBounds,

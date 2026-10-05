@@ -1,5 +1,6 @@
 import {
   Camera,
+  CircleLayer,
   Images,
   MapView,
   ShapeSource,
@@ -22,7 +23,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
 import { useI18n } from '@/i18n/I18nContext';
-import { BOUNDS_LIMIT, fetchShopsInBounds, geocodeAddress } from '@/lib/api';
+import {
+  BOUNDS_LIMIT,
+  type CityCluster,
+  fetchCityClusters,
+  fetchShopsInBounds,
+  geocodeAddress,
+} from '@/lib/api';
+import {
+  CLUSTER_FONT,
+  CLUSTER_NAME_OFFSET,
+  CLUSTER_RADIUS,
+  CLUSTER_TAP_ZOOM,
+  clustersToGeoJSON,
+} from '@/lib/cityClusters';
 import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium } from '@/lib/haptics';
 import { useRequireAuth } from '@/lib/useRequireAuth';
@@ -110,12 +124,19 @@ export function MapScreen() {
   const [userPos, setUserPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
   const [zoomedOut, setZoomedOut] = useState(false);
+  const [clusters, setClusters] = useState<CityCluster[]>([]);
+
+  // Jede Ladeabfrage bekommt eine Nummer. Kommt eine ältere Antwort erst nach
+  // einer neueren an (z. B. nach schnellem Herauszoomen), wird sie verworfen –
+  // sonst blieben veraltete Pins stehen.
+  const loadSeq = useRef(0);
 
   // Es wird immer nur der sichtbare Kartenausschnitt geladen (deutschlandweit
   // wären es zu viele Läden auf einmal).
   const loadVisibleShops = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
+    const seq = ++loadSeq.current;
     try {
       const [northEast, southWest] = await map.getVisibleBounds();
       const bounds: GeoBounds = {
@@ -128,15 +149,20 @@ export function MapScreen() {
         latitude: (bounds.minLat + bounds.maxLat) / 2,
         longitude: (bounds.minLon + bounds.maxLon) / 2,
       });
-      // Bei sehr weitem Zoom (halb Deutschland sichtbar) nicht laden – erst reinzoomen.
+      // Bei sehr weitem Zoom (halb Deutschland sichtbar) keine Einzelläden laden,
+      // sondern Blasen mit der Anzahl je Stadt zeigen.
       if (bounds.maxLat - bounds.minLat > 3.5) {
         setShops([]);
         setTruncated(false);
         setZoomedOut(true);
+        const found = await fetchCityClusters(bounds);
+        if (seq === loadSeq.current) setClusters(found);
         return;
       }
       setZoomedOut(false);
+      setClusters([]);
       const found = await fetchShopsInBounds(bounds);
+      if (seq !== loadSeq.current) return;
       setShops(found);
       setTruncated(found.length >= BOUNDS_LIMIT);
     } catch (e) {
@@ -200,6 +226,21 @@ export function MapScreen() {
   const onShopPress = (event: OnPressEvent) => {
     const shopId = event.features?.[0]?.properties?.id as string | undefined;
     if (shopId) navigation.navigate('ShopDetail', { shopId });
+  };
+
+  const clusterFeatures = useMemo(() => clustersToGeoJSON(clusters), [clusters]);
+
+  // Stadt-Blase angetippt: hineinzoomen, dann erscheinen die einzelnen Läden.
+  const onClusterPress = (event: OnPressEvent) => {
+    const geometry = event.features?.[0]?.geometry;
+    if (geometry?.type !== 'Point') return;
+    tapLight();
+    const [lon, lat] = geometry.coordinates;
+    setCameraJump((prev) => ({
+      centerCoordinate: [lon, lat],
+      zoomLevel: CLUSTER_TAP_ZOOM,
+      key: prev.key + 1,
+    }));
   };
 
   // Ortssuche: Eingabe (z. B. „Frankfurt") per Nominatim geokodieren und die
@@ -283,6 +324,43 @@ export function MapScreen() {
               iconAnchor: 'bottom',
               iconAllowOverlap: true,
               iconIgnorePlacement: true,
+            }}
+          />
+        </ShapeSource>
+        {/* Städte-Blasen (nur weit herausgezoomt befüllt, aber immer eingehängt). */}
+        <ShapeSource id="cities" shape={clusterFeatures} onPress={onClusterPress}>
+          <CircleLayer
+            id="city-bubbles"
+            style={{
+              circleRadius: CLUSTER_RADIUS as unknown as number,
+              circleColor: theme.colors.primary,
+              circleOpacity: 0.92,
+              circleStrokeColor: theme.dark ? '#FFA534' : '#FFFFFF',
+              circleStrokeWidth: 2,
+            }}
+          />
+          <SymbolLayer
+            id="city-counts"
+            style={{
+              textField: ['get', 'label'],
+              textFont: CLUSTER_FONT,
+              textSize: 12,
+              textColor: theme.colors.onPrimary,
+              textAllowOverlap: true,
+              textIgnorePlacement: true,
+            }}
+          />
+          <SymbolLayer
+            id="city-names"
+            style={{
+              textField: ['get', 'city'],
+              textFont: CLUSTER_FONT,
+              textSize: 11,
+              textOffset: CLUSTER_NAME_OFFSET,
+              textAnchor: 'top',
+              textColor: theme.colors.text,
+              textHaloColor: theme.colors.background,
+              textHaloWidth: 1.5,
             }}
           />
         </ShapeSource>

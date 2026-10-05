@@ -16,13 +16,27 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FilterBar } from '@/components/FilterBar';
 import { useI18n } from '@/i18n/I18nContext';
-import { BOUNDS_LIMIT, fetchShopsInBounds, geocodeAddress } from '@/lib/api';
+import {
+  BOUNDS_LIMIT,
+  type CityCluster,
+  fetchCityClusters,
+  fetchShopsInBounds,
+  geocodeAddress,
+} from '@/lib/api';
+import {
+  CLUSTER_FONT,
+  CLUSTER_NAME_OFFSET,
+  CLUSTER_RADIUS,
+  CLUSTER_TAP_ZOOM,
+  clustersToGeoJSON,
+} from '@/lib/cityClusters';
 import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium } from '@/lib/haptics';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useFilters } from '@/lib/FilterContext';
 import { isOpenNow } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
+import { darkTheme, lightTheme } from '@/theme';
 import { useTheme } from '@/theme/ThemeContext';
 import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
@@ -102,10 +116,18 @@ export function MapScreen() {
   const [userPos, setUserPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
   const [zoomedOut, setZoomedOut] = useState(false);
+  const [clusters, setClusters] = useState<CityCluster[]>([]);
+  const clusterFeaturesRef = useRef<GeoJSON.FeatureCollection>(clustersToGeoJSON([]));
+
+  // Jede Ladeabfrage bekommt eine Nummer. Kommt eine ältere Antwort erst nach
+  // einer neueren an (z. B. nach schnellem Herauszoomen), wird sie verworfen –
+  // sonst blieben veraltete Pins stehen.
+  const loadSeq = useRef(0);
 
   const loadVisibleShops = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
+    const seq = ++loadSeq.current;
     const b = map.getBounds();
     const bounds: GeoBounds = {
       minLat: b.getSouth(),
@@ -115,15 +137,23 @@ export function MapScreen() {
     };
     const c = map.getCenter();
     setMapCenter({ latitude: c.lat, longitude: c.lng });
+    // Weit herausgezoomt: statt Einzelläden Blasen mit der Anzahl je Stadt.
     if (bounds.maxLat - bounds.minLat > 3.5) {
       setShops([]);
       setTruncated(false);
       setZoomedOut(true);
+      fetchCityClusters(bounds)
+        .then((c) => {
+          if (seq === loadSeq.current) setClusters(c);
+        })
+        .catch(() => {});
       return;
     }
     setZoomedOut(false);
+    setClusters([]);
     try {
       const found = await fetchShopsInBounds(bounds);
+      if (seq !== loadSeq.current) return;
       setShops(found);
       setTruncated(found.length >= BOUNDS_LIMIT);
     } catch (e) {
@@ -144,6 +174,8 @@ export function MapScreen() {
     });
     mapRef.current = map;
     container.classList.toggle('dd-dark', darkRef.current);
+    // Nur in der Entwicklung: Zugriff für automatisierte Browser-Tests.
+    if (__DEV__) (window as unknown as { __ddMap?: maplibregl.Map }).__ddMap = map;
 
     const loadMarker = (name: string, url: string) =>
       new Promise<void>((resolve) => {
@@ -187,9 +219,66 @@ export function MapScreen() {
           'icon-opacity': ['case', ['get', 'rated'], 1, 0.7],
         },
       });
+      // Städte-Blasen für die weit herausgezoomte Karte.
+      const th = darkRef.current ? darkTheme : lightTheme;
+      map.addSource('cities', { type: 'geojson', data: clusterFeaturesRef.current });
+      map.addLayer({
+        id: 'city-bubbles',
+        type: 'circle',
+        source: 'cities',
+        paint: {
+          'circle-radius': CLUSTER_RADIUS as unknown as maplibregl.ExpressionSpecification,
+          'circle-color': th.colors.primary,
+          'circle-opacity': 0.92,
+          'circle-stroke-color': th.dark ? '#FFA534' : '#FFFFFF',
+          'circle-stroke-width': 2,
+        },
+      });
+      map.addLayer({
+        id: 'city-counts',
+        type: 'symbol',
+        source: 'cities',
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-font': CLUSTER_FONT,
+          'text-size': 12,
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: { 'text-color': th.colors.onPrimary },
+      });
+      map.addLayer({
+        id: 'city-names',
+        type: 'symbol',
+        source: 'cities',
+        layout: {
+          'text-field': ['get', 'city'],
+          'text-font': CLUSTER_FONT,
+          'text-size': 11,
+          'text-offset': CLUSTER_NAME_OFFSET as [number, number],
+          'text-anchor': 'top',
+        },
+        paint: {
+          'text-color': th.colors.text,
+          'text-halo-color': th.colors.background,
+          'text-halo-width': 1.5,
+        },
+      });
       mapReadyRef.current = true;
       if (handlersRef.current) return;
       handlersRef.current = true;
+      map.on('click', 'city-bubbles', (e) => {
+        const f = e.features?.[0];
+        if (f?.geometry.type !== 'Point') return;
+        const [lon, lat] = f.geometry.coordinates;
+        map.flyTo({ center: [lon, lat], zoom: CLUSTER_TAP_ZOOM });
+      });
+      map.on('mouseenter', 'city-bubbles', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'city-bubbles', () => {
+        map.getCanvas().style.cursor = '';
+      });
       map.on('click', 'shop-markers', (e) => {
         const shopId = e.features?.[0]?.properties?.id as string | undefined;
         if (shopId) navigation.navigate('ShopDetail', { shopId });
@@ -257,6 +346,14 @@ export function MapScreen() {
     const source = map.getSource('shops') as maplibregl.GeoJSONSource | undefined;
     source?.setData(shopFeatures);
   }, [shopFeatures]);
+
+  useEffect(() => {
+    const features = clustersToGeoJSON(clusters);
+    clusterFeaturesRef.current = features;
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current) return;
+    (map.getSource('cities') as maplibregl.GeoJSONSource | undefined)?.setData(features);
+  }, [clusters]);
 
   // Theme gewechselt: passenden Kartenstil (hell/dunkel) laden.
   const firstThemeRun = useRef(true);
