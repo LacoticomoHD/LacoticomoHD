@@ -30,8 +30,10 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-/** Rechteck einer Kachel als [Süd, West, Nord, Ost]. */
+/** Rechteck einer Kachel als [Süd, West, Nord, Ost]. Statt „K1-2" geht auch ein
+ *  eigenes Rechteck „Süd:West:Nord:Ost", z. B. „48.88:8.22:49.17:8.63" (Karlsruhe). */
 function tileBox(tile) {
+  if (tile.includes(':')) return tile.split(':').map(Number);
   const [r, c] = tile.slice(1).split('-').map(Number);
   const s = LAT0 + r * LAT_STEP, w = LON0 + c * LON_STEP;
   return [s, w, s + LAT_STEP, w + LON_STEP];
