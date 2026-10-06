@@ -100,18 +100,26 @@ export function parseOsmHours(raw) {
 // ---------------------------------------------------------------------------
 
 /** Fragt ein Rechteck ab. Sind alle Server überlastet (typisch in Großstädten),
- *  wird das Rechteck geviertelt und jedes Viertel einzeln abgefragt. */
+ *  wird das Rechteck geviertelt und jedes Viertel einzeln abgefragt. Gelungene
+ *  Teile werden behalten, auch wenn einzelne Kleinst-Teile scheitern – die holt
+ *  der nächste Lauf nach. Ergebnis: gefundene Einträge + Zahl gescheiterter Teile. */
 async function queryBox(box, depth = 0) {
   try {
-    return await overpass(box);
+    return { items: await overpass(box), failedParts: 0 };
   } catch (e) {
-    if (depth >= MAX_SPLIT_DEPTH) throw e;
+    if (depth >= MAX_SPLIT_DEPTH) {
+      console.log(`  Teil ${box.map((x) => x.toFixed(2)).join(',')} übersprungen: ${e.message ?? e}`);
+      return { items: [], failedParts: 1 };
+    }
     const items = [];
+    let failedParts = 0;
     for (const part of quarters(box)) {
       await new Promise((r) => setTimeout(r, PAUSE_MS));
-      items.push(...(await queryBox(part, depth + 1)));
+      const res = await queryBox(part, depth + 1);
+      items.push(...res.items);
+      failedParts += res.failedParts;
     }
-    return items;
+    return { items, failedParts };
   }
 }
 
@@ -164,13 +172,17 @@ let total = 0;
 let failed = 0;
 for (const [i, tile] of tiles.entries()) {
   try {
-    const raw = await queryBox(tileBox(tile));
+    const { items: raw, failedParts } = await queryBox(tileBox(tile));
     const items = raw
       .map((e) => ({ lat: e.lat, lon: e.lon, name: e.name, hours: parseOsmHours(e.hours) }))
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon) && x.hours);
     const updated = items.length > 0 ? await importTile(tile, items) : 0;
     total += updated;
-    console.log(`${tile}: ${raw.length} in OSM, ${items.length} lesbar, ${updated} nachgetragen`);
+    if (failedParts > 0 && raw.length === 0) failed++;
+    console.log(
+      `${tile}: ${raw.length} in OSM, ${items.length} lesbar, ${updated} nachgetragen` +
+        (failedParts > 0 ? ` (${failedParts} Teilstück(e) wegen Überlastung übersprungen)` : '')
+    );
   } catch (e) {
     failed++;
     console.log(`${tile}: FEHLER ${e.message ?? e}`);
