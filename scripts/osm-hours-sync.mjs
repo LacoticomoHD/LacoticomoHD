@@ -176,7 +176,16 @@ async function importTile(tile, items) {
   return Number(await res.json());
 }
 
-const tiles = TILES ? TILES.split(',').map((t) => t.trim()).filter(Boolean) : ALL_TILES;
+// TILES: leer = alle, „rows:0-4" = Kachelzeilen 0 bis 4 (Süden), sonst Komma-Liste.
+const rowsMatch = TILES?.match(/^rows:(\d)-(\d)$/);
+const tiles = rowsMatch
+  ? ALL_TILES.filter((t) => {
+      const r = Number(t.slice(1).split('-')[0]);
+      return r >= Number(rowsMatch[1]) && r <= Number(rowsMatch[2]);
+    })
+  : TILES
+    ? TILES.split(',').map((t) => t.trim()).filter(Boolean)
+    : ALL_TILES;
 let total = 0;
 let failed = 0;
 for (const [i, tile] of tiles.entries()) {

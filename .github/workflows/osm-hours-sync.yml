@@ -1,14 +1,17 @@
 name: Öffnungszeiten aus OSM nachladen
 
-# Täglich um 03:23 Uhr UTC alle Kacheln über Deutschland abgleichen.
+# Täglich in zwei Hälften (ein Lauf darf höchstens 5 Stunden dauern, und bei
+# überlasteten OSM-Servern reicht das nicht für ganz Deutschland):
+# 03:23 UTC Süden (Kachelzeilen 0–4), 15:23 UTC Norden (Zeilen 5–8).
 # Manuell startbar unter „Actions" → dieser Ablauf → „Run workflow".
 on:
   schedule:
     - cron: '23 3 * * *'
+    - cron: '23 15 * * *'
   workflow_dispatch:
     inputs:
       tiles:
-        description: 'Nur bestimmte Kacheln, z. B. "K7-2,K4-1", oder ein Rechteck "Süd:West:Nord:Ost" (leer = alle)'
+        description: 'Nur bestimmte Kacheln, z. B. "K7-2,K4-1", "rows:5-8" oder ein Rechteck "Süd:West:Nord:Ost" (leer = alle)'
         required: false
         default: ''
       loose:
@@ -40,6 +43,6 @@ jobs:
           SUPABASE_ANON_KEY: sb_publishable_v7vCCl0c9OTgUT1vJ0YTdw_pqHM0H9A
           # Darf nur die Funktion osm_hours_import aufrufen (leere Zeiten befüllen).
           OSM_SYNC_TOKEN: ${{ secrets.OSM_SYNC_TOKEN }}
-          TILES: ${{ inputs.tiles }}
+          TILES: ${{ inputs.tiles || (github.event.schedule == '23 3 * * *' && 'rows:0-4') || (github.event.schedule == '23 15 * * *' && 'rows:5-8') || '' }}
           LOOSE_MATCH: ${{ inputs.loose }}
         run: node scripts/osm-hours-sync.mjs

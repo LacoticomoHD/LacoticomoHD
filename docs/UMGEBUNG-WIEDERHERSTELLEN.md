@@ -76,7 +76,7 @@ legen (die Datei `don-doener-latest.apk` aus dem vorigen Stand übernehmen).
 
 ## Automatischer Öffnungszeiten-Abgleich (OSM)
 
-- Läuft täglich als GitHub-Action (`.github/workflows/osm-hours-sync.yml`,
+- Läuft täglich in zwei Hälften (03:23 UTC Süden, 15:23 UTC Norden) als GitHub-Action (`.github/workflows/osm-hours-sync.yml`,
   Skript `scripts/osm-hours-sync.mjs`); manuell startbar unter
   „Actions → Öffnungszeiten aus OSM nachladen → Run workflow".
 - Deutschland ist in 54 Rechteck-Kacheln geteilt; jede wird bei Overpass
