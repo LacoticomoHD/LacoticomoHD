@@ -11,6 +11,11 @@ on:
         description: 'Nur bestimmte Kacheln, z. B. "K7-2,K4-1" (leer = alle)'
         required: false
         default: ''
+      loose:
+        description: 'Lockere Zuordnung (auch bei abweichendem Namen, wenn im 30-m-Umkreis eindeutig)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -36,4 +41,5 @@ jobs:
           # Darf nur die Funktion osm_hours_import aufrufen (leere Zeiten befüllen).
           OSM_SYNC_TOKEN: ${{ secrets.OSM_SYNC_TOKEN }}
           TILES: ${{ inputs.tiles }}
+          LOOSE_MATCH: ${{ inputs.loose }}
         run: node scripts/osm-hours-sync.mjs

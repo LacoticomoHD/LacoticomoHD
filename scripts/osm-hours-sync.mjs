@@ -7,9 +7,12 @@
 // ohne Namen ~20 m) – was Nutzer eingetragen haben, wird nie überschrieben.
 //
 // Benötigt die Umgebungsvariablen SUPABASE_URL, SUPABASE_ANON_KEY und
-// OSM_SYNC_TOKEN (GitHub-Secret). Optional: TILES="K3-2,K4-1" für einzelne Kacheln.
+// OSM_SYNC_TOKEN (GitHub-Secret). Optional: TILES="K3-2,K4-1" für einzelne Kacheln,
+// LOOSE_MATCH=true für die lockerere Zuordnung (siehe SQL apply_osm_hours).
 
-const { SUPABASE_URL, SUPABASE_ANON_KEY, OSM_SYNC_TOKEN, TILES } = process.env;
+const { SUPABASE_URL, SUPABASE_ANON_KEY, OSM_SYNC_TOKEN, TILES, LOOSE_MATCH } = process.env;
+// Lockere Zuordnung (auch bei abweichendem Namen, wenn im 30-m-Umkreis eindeutig).
+const LOOSE = LOOSE_MATCH === 'true' || LOOSE_MATCH === '1';
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !OSM_SYNC_TOKEN) {
   console.error('SUPABASE_URL, SUPABASE_ANON_KEY und OSM_SYNC_TOKEN müssen gesetzt sein.');
   process.exit(1);
@@ -174,7 +177,7 @@ for (const [i, tile] of tiles.entries()) {
   try {
     const { items: raw, failedParts } = await queryBox(tileBox(tile));
     const items = raw
-      .map((e) => ({ lat: e.lat, lon: e.lon, name: e.name, hours: parseOsmHours(e.hours) }))
+      .map((e) => ({ lat: e.lat, lon: e.lon, name: e.name, hours: parseOsmHours(e.hours), loose: LOOSE }))
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon) && x.hours);
     const updated = items.length > 0 ? await importTile(tile, items) : 0;
     total += updated;
