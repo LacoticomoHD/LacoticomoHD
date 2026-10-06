@@ -128,6 +128,8 @@ async function queryBox(box, depth = 0) {
   }
 }
 
+const unquote = (v) => (/^".*"$/s.test(v) ? v.slice(1, -1).replace(/""/g, '"') : v);
+
 async function overpass(box) {
   const bbox = box.map((x) => x.toFixed(3)).join(',');
   const q = `[out:csv(::lat,::lon,name,opening_hours;false;"\t")][timeout:55][bbox:${bbox}];
@@ -148,7 +150,9 @@ out center;`;
       }
       return (await res.text())
         .split('\n')
-        .map((line) => line.split('\t'))
+        // Overpass setzt Werte mit Komma/Semikolon in "…" (innere " verdoppelt) –
+        // also fast alle Öffnungszeiten. Ohne Entpacken würde der Parser sie verwerfen.
+        .map((line) => line.split('\t').map(unquote))
         .filter((c) => c.length >= 4 && c[0] && c[1] && c[3])
         .map(([lat, lon, name, hours]) => ({ lat: +lat, lon: +lon, name, hours }));
     } catch (e) {
