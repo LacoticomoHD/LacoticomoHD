@@ -27,11 +27,24 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-function bbox(tile) {
+/** Rechteck einer Kachel als [Süd, West, Nord, Ost]. */
+function tileBox(tile) {
   const [r, c] = tile.slice(1).split('-').map(Number);
   const s = LAT0 + r * LAT_STEP, w = LON0 + c * LON_STEP;
-  return [s, w, s + LAT_STEP, w + LON_STEP].map((x) => x.toFixed(2)).join(',');
+  return [s, w, s + LAT_STEP, w + LON_STEP];
 }
+
+/** Teilt ein Rechteck in vier gleich große Viertel. */
+function quarters([s, w, n, e]) {
+  const mLat = (s + n) / 2, mLon = (w + e) / 2;
+  return [
+    [s, w, mLat, mLon], [s, mLon, mLat, e],
+    [mLat, w, n, mLon], [mLat, mLon, n, e],
+  ];
+}
+
+/** Wie oft eine überlastete Fläche höchstens geviertelt wird (2 → bis zu 16 Teile). */
+const MAX_SPLIT_DEPTH = 2;
 
 // ---------------------------------------------------------------------------
 // OSM-opening_hours → App-Format { montag: { open, close }, … }
@@ -86,8 +99,25 @@ export function parseOsmHours(raw) {
 
 // ---------------------------------------------------------------------------
 
-async function overpass(tile) {
-  const q = `[out:csv(::lat,::lon,name,opening_hours;false;"\t")][timeout:90][bbox:${bbox(tile)}];
+/** Fragt ein Rechteck ab. Sind alle Server überlastet (typisch in Großstädten),
+ *  wird das Rechteck geviertelt und jedes Viertel einzeln abgefragt. */
+async function queryBox(box, depth = 0) {
+  try {
+    return await overpass(box);
+  } catch (e) {
+    if (depth >= MAX_SPLIT_DEPTH) throw e;
+    const items = [];
+    for (const part of quarters(box)) {
+      await new Promise((r) => setTimeout(r, PAUSE_MS));
+      items.push(...(await queryBox(part, depth + 1)));
+    }
+    return items;
+  }
+}
+
+async function overpass(box) {
+  const bbox = box.map((x) => x.toFixed(3)).join(',');
+  const q = `[out:csv(::lat,::lon,name,opening_hours;false;"\t")][timeout:55][bbox:${bbox}];
 nwr["amenity"~"^(fast_food|restaurant)$"]["cuisine"~"kebab|doner|döner|turkish",i]["opening_hours"];
 out center;`;
   const errors = [];
@@ -97,7 +127,7 @@ out center;`;
         method: 'POST',
         body: new URLSearchParams({ data: q }),
         headers: { 'User-Agent': 'DonDoener-HoursSync/2.0 (https://lacoticomohd.github.io/LacoticomoHD/)' },
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(65_000),
       });
       if (!res.ok) {
         errors.push(`${new URL(url).host}: HTTP ${res.status}`);
@@ -134,7 +164,7 @@ let total = 0;
 let failed = 0;
 for (const [i, tile] of tiles.entries()) {
   try {
-    const raw = await overpass(tile);
+    const raw = await queryBox(tileBox(tile));
     const items = raw
       .map((e) => ({ lat: e.lat, lon: e.lon, name: e.name, hours: parseOsmHours(e.hours) }))
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon) && x.hours);
