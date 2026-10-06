@@ -4,12 +4,16 @@ import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { EmptyState } from '@/components/EmptyState';
 import { FilterBar } from '@/components/FilterBar';
+import { RecentShops } from '@/components/RecentShops';
+import { ShopListSkeleton } from '@/components/Skeleton';
 import { TextField } from '@/components/TextField';
 import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds, searchShops } from '@/lib/api';
 import { formatLoadError } from '@/lib/errors';
 import { useFilters } from '@/lib/FilterContext';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { distanceKm } from '@/lib/geo';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
@@ -22,8 +26,6 @@ const DEFAULT_CENTER = { latitude: 49.0093, longitude: 8.4044 };
 // ±0,25° Breite ≈ Umkreis von rund 25 km
 const NEARBY_DELTA = 0.25;
 
-type SortMode = 'rating' | 'distance' | 'price';
-
 interface Coords {
   latitude: number;
   longitude: number;
@@ -32,11 +34,12 @@ interface Coords {
 export function ShopListScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { matchesFilters } = useFilters();
+  const { matchesFilters, hasActiveFilters, resetFilters, sortMode, setSortMode } = useFilters();
   const { t } = useI18n();
+  const requireAuth = useRequireAuth();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
   const [query, setQuery] = useState('');
-  const [sortMode, setSortMode] = useState<SortMode>('rating');
+  const [loading, setLoading] = useState(true);
   const [position, setPosition] = useState<Coords | null>(null);
 
   // Läden laden: bei Suchbegriff deutschlandweit suchen, sonst Umgebung
@@ -58,7 +61,8 @@ export function ShopListScreen() {
         .catch((e: Error) => {
           const msg = formatLoadError(e);
           if (msg) Alert.alert(t('common.loadError'), msg);
-        });
+        })
+        .finally(() => setLoading(false));
     },
     []
   );
@@ -171,14 +175,45 @@ export function ShopListScreen() {
         keyExtractor={(item) => item.id}
         style={styles.flex}
         contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          query.trim() === '' ? (
+            <View style={styles.recentWrap}>
+              <RecentShops onSelect={(id) => navigation.navigate('ShopDetail', { shopId: id })} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            {shops.length === 0
-              ? query.trim().length >= 2
-                ? t('list.emptyNothing')
-                : t('list.emptyArea')
-              : t('list.emptyFilter')}
-          </Text>
+          loading ? (
+            <ShopListSkeleton />
+          ) : shops.length > 0 && hasActiveFilters ? (
+            <EmptyState
+              icon="sliders"
+              text={t('list.emptyFilter')}
+              actions={[{ label: t('empty.resetFilters'), icon: 'x', onPress: resetFilters }]}
+            />
+          ) : query.trim().length >= 2 ? (
+            <EmptyState
+              icon="search"
+              text={t('list.emptyNothing')}
+              actions={[
+                { label: t('empty.clearSearch'), icon: 'x', onPress: () => setQuery('') },
+                { label: t('empty.addShop'), icon: 'plus', onPress: () => requireAuth() && navigation.navigate('AddShop') },
+              ]}
+            />
+          ) : (
+            <EmptyState
+              icon="map"
+              text={t('list.emptyArea')}
+              actions={[
+                {
+                  label: t('empty.toMap'),
+                  icon: 'map',
+                  onPress: () => navigation.navigate('Tabs', { screen: 'Karte' }),
+                },
+              ]}
+            />
+          )
         }
         renderItem={({ item }) => (
           <ShopRow
@@ -200,6 +235,7 @@ const styles = StyleSheet.create({
   empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   list: { paddingBottom: 24, paddingHorizontal: 16, paddingTop: 4 },
+  recentWrap: { marginHorizontal: -16, marginBottom: 6 },
   searchWrap: { paddingHorizontal: 16, paddingTop: 12 },
   sortChip: {
     borderRadius: 16,

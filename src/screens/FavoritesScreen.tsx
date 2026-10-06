@@ -3,11 +3,13 @@ import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { EmptyState } from '@/components/EmptyState';
+import { ShopListSkeleton } from '@/components/Skeleton';
 import { StarRating } from '@/components/StarRating';
 import { fetchFavoriteShops, removeFavorite } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { formatPrice } from '@/lib/geo';
-import { openStatus } from '@/lib/openingHours';
+import { useOpenState } from '@/lib/useOpenState';
 import type { RootStackParamList } from '@/navigation/types';
 import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -21,12 +23,14 @@ export function FavoritesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     if (!user) return;
     fetchFavoriteShops(user.id)
       .then(setShops)
-      .catch((e: Error) => Alert.alert(t('common.error'), e.message));
+      .catch((e: Error) => Alert.alert(t('common.error'), e.message))
+      .finally(() => setLoading(false));
   }, [user]);
 
   useFocusEffect(load);
@@ -48,12 +52,19 @@ export function FavoritesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            {t('fav.empty')}
-          </Text>
+          loading ? (
+            <ShopListSkeleton count={4} />
+          ) : (
+            <EmptyState
+              icon="heart"
+              text={t('fav.empty')}
+              actions={[
+                { label: t('empty.toMap'), icon: 'map', onPress: () => navigation.navigate('Tabs', { screen: 'Karte' }) },
+              ]}
+            />
+          )
         }
         renderItem={({ item }) => {
-          const status = openStatus(item.opening_hours ?? {});
           const avg = item.summary?.avg_gesamt;
           return (
             <Pressable
@@ -68,24 +79,7 @@ export function FavoritesScreen() {
                   <Text style={[styles.cardName, { color: theme.colors.text }]} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  <Text
-                    style={{
-                      color:
-                        status === 'open'
-                          ? theme.colors.success
-                          : status === 'closed'
-                            ? theme.colors.danger
-                            : theme.colors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: '700',
-                    }}
-                  >
-                    {status === 'open'
-                      ? t('common.open')
-                      : status === 'closed'
-                        ? t('common.closed')
-                        : t('common.hoursUnknown')}
-                  </Text>
+                  <OpenLabel hours={item.opening_hours} />
                 </View>
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
                   {item.address}
@@ -121,6 +115,11 @@ export function FavoritesScreen() {
   );
 }
 
+function OpenLabel({ hours }: { hours: ShopWithSummary['opening_hours'] }) {
+  const { label, color } = useOpenState(hours);
+  return <Text style={{ color, fontSize: 12, fontWeight: '700' }}>{label}</Text>;
+}
+
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
@@ -140,7 +139,6 @@ const styles = StyleSheet.create({
   },
   cardName: { flex: 1, fontSize: 16, fontWeight: '700' },
   cardStats: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 4 },
-  empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   list: { padding: 16 },
 });

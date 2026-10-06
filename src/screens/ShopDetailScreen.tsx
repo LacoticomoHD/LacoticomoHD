@@ -34,13 +34,14 @@ import {
   setHoursVote,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
-import { openDirections, TRAVEL_MODES } from '@/lib/directions';
+import { navAppHasModes, openDirections, TRAVEL_MODES, useNavApp } from '@/lib/directions';
 import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium, tapSelection } from '@/lib/haptics';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
-import { openStatus } from '@/lib/openingHours';
+import { closingSoon, openStatus } from '@/lib/openingHours';
+import { rememberShop } from '@/lib/recentShops';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
@@ -129,6 +130,7 @@ export function ShopDetailScreen() {
   const [hoursVotes, setHoursVotes] = useState<HoursVoteSummary | null>(null);
   const [myHoursVote, setMyHoursVote] = useState<1 | -1 | 0>(0);
   const [showRouteModes, setShowRouteModes] = useState(false);
+  const navApp = useNavApp();
   const [heroPhoto, setHeroPhoto] = useState<string | null>(null);
   const onPhotos = useCallback((p: ShopPhoto[]) => setHeroPhoto(p[0]?.url ?? null), []);
   const heartScale = useRef(new Animated.Value(1)).current;
@@ -144,6 +146,7 @@ export function ShopDetailScreen() {
       ])
         .then(([s, sum, feats, prices, hv]) => {
           setShop(s);
+          rememberShop({ id: s.id, name: s.name, city: s.city ?? null });
           setSummary(sum);
           setFeatureSummary(feats);
           setPriceHistory(prices);
@@ -225,6 +228,7 @@ export function ShopDetailScreen() {
   }
 
   const hoursStatus = openStatus(shop.opening_hours ?? {});
+  const soonMin = hoursStatus === 'open' ? closingSoon(shop.opening_hours) : null;
   const avg = summary?.avg_gesamt;
   const c = theme.colors;
   const card = [styles.card, { backgroundColor: c.surface, borderColor: c.border }];
@@ -263,7 +267,9 @@ export function ShopDetailScreen() {
       active: showRouteModes,
       onPress: () => {
         tapLight();
-        setShowRouteModes((v) => !v);
+        // Waze & Co. kennen keine Verkehrsmittel-Wahl → direkt losnavigieren.
+        if (!navAppHasModes(navApp)) openDirections(shop.latitude, shop.longitude, 'driving', shop.name);
+        else setShowRouteModes((v) => !v);
       },
     },
     {
@@ -324,7 +330,9 @@ export function ShopDetailScreen() {
           <View
             style={[
               styles.statusPill,
-              hoursStatus === 'open'
+              soonMin != null
+                ? styles.statusSoon
+                : hoursStatus === 'open'
                 ? styles.statusOpen
                 : hoursStatus === 'closed'
                   ? styles.statusClosed
@@ -336,7 +344,9 @@ export function ShopDetailScreen() {
                 styles.statusDot,
                 {
                   backgroundColor:
-                    hoursStatus === 'open'
+                    soonMin != null
+                      ? '#FFC247'
+                      : hoursStatus === 'open'
                       ? '#5FD98A'
                       : hoursStatus === 'closed'
                         ? '#FF8A80'
@@ -345,7 +355,9 @@ export function ShopDetailScreen() {
               ]}
             />
             <Text style={styles.statusText}>
-              {hoursStatus === 'open'
+              {soonMin != null
+                ? t('common.closingSoon', { n: soonMin })
+                : hoursStatus === 'open'
                 ? t('common.openNow')
                 : hoursStatus === 'closed'
                   ? t('common.closed')
@@ -420,7 +432,7 @@ export function ShopDetailScreen() {
           {TRAVEL_MODES.map((m) => (
             <Pressable
               key={m.key}
-              onPress={() => openDirections(shop.latitude, shop.longitude, m.key)}
+              onPress={() => openDirections(shop.latitude, shop.longitude, m.key, shop.name)}
               style={[styles.travelButton, { backgroundColor: c.surface, borderColor: c.border }]}
             >
               <Icon name={TRAVEL_ICONS[m.key]} size={19} color={c.primary} />
@@ -801,6 +813,7 @@ const styles = StyleSheet.create({
   statusClosed: { backgroundColor: 'rgba(120,20,10,0.45)', borderColor: 'rgba(255,138,128,0.5)' },
   statusDot: { borderRadius: 4, height: 7, width: 7 },
   statusOpen: { backgroundColor: 'rgba(20,90,45,0.55)', borderColor: 'rgba(95,217,138,0.5)' },
+  statusSoon: { backgroundColor: 'rgba(110,70,0,0.55)', borderColor: 'rgba(255,194,71,0.6)' },
   statusPill: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',

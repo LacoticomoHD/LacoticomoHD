@@ -11,6 +11,8 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { EmptyState } from '@/components/EmptyState';
+import { ShopListSkeleton } from '@/components/Skeleton';
 import { StarRating } from '@/components/StarRating';
 import { fetchCityStats, fetchTopShops, TOP_MIN_RATINGS, TopShopsMode } from '@/lib/api';
 import { formatPrice } from '@/lib/geo';
@@ -33,6 +35,7 @@ export function BestenlisteScreen() {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [mode, setMode] = useState<TopShopsMode>('rating');
   const [shops, setShops] = useState<ShopWithSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   // Solange es noch keine Läden mit genügend Bewertungen gibt, zeigen wir
   // ersatzweise die schon bewerteten – klar als vorläufig gekennzeichnet.
   const [provisional, setProvisional] = useState(false);
@@ -53,7 +56,8 @@ export function BestenlisteScreen() {
           setShops(fallback);
           setProvisional(fallback.length > 0);
         })
-        .catch((e: Error) => Alert.alert(t('common.loadError'), e.message));
+        .catch((e: Error) => Alert.alert(t('common.loadError'), e.message))
+        .finally(() => setLoading(false));
     }, [selectedCity, mode])
   );
 
@@ -245,11 +249,17 @@ export function BestenlisteScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            {mode === 'value'
-              ? t('top.emptyValue')
-              : t('top.emptyRating')}
-          </Text>
+          loading ? (
+            <ShopListSkeleton count={5} />
+          ) : (
+            <EmptyState
+              icon="award"
+              text={mode === 'value' ? t('top.emptyValue') : t('top.emptyRating')}
+              actions={[
+                { label: t('empty.rateShops'), icon: 'map', onPress: () => navigation.navigate('Tabs', { screen: 'Karte' }) },
+              ]}
+            />
+          )
         }
         renderItem={({ item, index }) => {
           const podium = index < 3;
@@ -361,7 +371,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   cheapList: { borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
   cheapRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 4 },

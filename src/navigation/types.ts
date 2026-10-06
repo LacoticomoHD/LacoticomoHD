@@ -1,5 +1,7 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type RootStackParamList = {
-  Tabs: undefined;
+  Tabs: NavigatorScreenParams<TabParamList> | undefined;
   /** Anmelden/Registrieren – wird als Overlay gezeigt, wenn ein Gast eine
    *  Aktion auslöst, die ein Konto braucht (Bewerten, Eintragen, Merken …). */
   Auth: undefined;

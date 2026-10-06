@@ -21,6 +21,8 @@ export interface Theme {
     starEmpty: string;
     danger: string;
     success: string;
+    /** Hinweisfarbe, z. B. „Schließt bald“. */
+    warning: string;
     /** Schwebende Flächen über der Karte (Suche, Chips, Knöpfe). */
     overlay: string;
     overlayBorder: string;
@@ -65,6 +67,7 @@ export const lightTheme: Theme = {
     starEmpty: '#CFC2B2',
     danger: '#C62828',
     success: '#1E7A3C',
+    warning: '#B86200',
     overlay: 'rgba(255,255,255,0.86)',
     overlayBorder: 'rgba(255,255,255,0.95)',
     ratingChip: '#FDF3DF',
@@ -104,6 +107,7 @@ export const darkTheme: Theme = {
     starEmpty: '#4A3B33',
     danger: '#FF6B5B',
     success: '#5FD98A',
+    warning: '#FFB938',
     overlay: 'rgba(26,19,17,0.94)',
     overlayBorder: '#35261F',
     ratingChip: 'rgba(255,178,63,0.14)',

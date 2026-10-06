@@ -34,7 +34,7 @@ import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium } from '@/lib/haptics';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useFilters } from '@/lib/FilterContext';
-import { isOpenNow } from '@/lib/openingHours';
+import { pinState } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { darkTheme, lightTheme } from '@/theme';
 import { useTheme } from '@/theme/ThemeContext';
@@ -42,19 +42,24 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
 import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
+import { RecentShops } from '@/components/RecentShops';
+import { RouletteModal } from '@/components/RouletteModal';
 import { darkStyleUrl, loadWarmDarkStyle, useWarmDarkStyle } from '@/lib/mapStyle';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const INITIAL_CENTER: [number, number] = [8.4044, 49.0093];
 
-// Karten-Marker (Döner-Pin) je Theme: farbig = geöffnet, neutral = geschlossen.
+// Karten-Marker (Döner-Pin) je Theme: farbig = geöffnet, gelb-orange = schließt
+// bald, neutral = geschlossen.
 const PIN_URIS = {
   light: {
     open: Asset.fromModule(require('../../assets/markers/pin-open-light.png')).uri,
+    soon: Asset.fromModule(require('../../assets/markers/pin-soon-light.png')).uri,
     closed: Asset.fromModule(require('../../assets/markers/pin-closed-light.png')).uri,
   },
   dark: {
     open: Asset.fromModule(require('../../assets/markers/pin-open-dark.png')).uri,
+    soon: Asset.fromModule(require('../../assets/markers/pin-soon-dark.png')).uri,
     closed: Asset.fromModule(require('../../assets/markers/pin-closed-dark.png')).uri,
   },
 };
@@ -123,6 +128,8 @@ export function MapScreen() {
   const [truncated, setTruncated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [rouletteOpen, setRouletteOpen] = useState(false);
   // Für die Hochzieh-Liste: eigener Standort (falls freigegeben) bzw. Kartenmitte.
   const [userPos, setUserPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -207,9 +214,12 @@ export function MapScreen() {
     // eigene Quellen, Ebenen und Bilder – sie werden hier neu angelegt).
     map.on('style.load', async () => {
       const pins = darkRef.current ? PIN_URIS.dark : PIN_URIS.light;
-      if (map.hasImage('pin-open')) map.removeImage('pin-open');
-      if (map.hasImage('pin-closed')) map.removeImage('pin-closed');
-      await Promise.all([loadMarker('pin-open', pins.open), loadMarker('pin-closed', pins.closed)]);
+      for (const n of ['pin-open', 'pin-soon', 'pin-closed']) if (map.hasImage(n)) map.removeImage(n);
+      await Promise.all([
+        loadMarker('pin-open', pins.open),
+        loadMarker('pin-soon', pins.soon),
+        loadMarker('pin-closed', pins.closed),
+      ]);
       if (map.getSource('shops')) {
         mapReadyRef.current = true;
         return;
@@ -223,7 +233,7 @@ export function MapScreen() {
         type: 'symbol',
         source: 'shops',
         layout: {
-          'icon-image': ['case', ['get', 'open'], 'pin-open', 'pin-closed'],
+          'icon-image': ['concat', 'pin-', ['get', 'pin']],
           // Noch unbewertete Läden treten optisch zurück.
           'icon-size': ['case', ['get', 'rated'], 0.17, 0.12],
           'icon-anchor': 'bottom',
@@ -346,7 +356,7 @@ export function MapScreen() {
         geometry: { type: 'Point' as const, coordinates: [shop.longitude, shop.latitude] },
         properties: {
           id: shop.id,
-          open: isOpenNow(shop.opening_hours ?? {}),
+          pin: pinState(shop.opening_hours),
           rated: (shop.summary?.rating_count ?? 0) > 0,
         },
       })),
@@ -445,6 +455,9 @@ export function MapScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={runSearch}
+            onFocus={() => setSearchFocused(true)}
+            // Kurz verzögert, damit ein Tipp auf „Zuletzt angesehen“ noch ankommt.
+            onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
             placeholder={t('map.searchPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             returnKeyType="search"
@@ -458,6 +471,15 @@ export function MapScreen() {
             </Pressable>
           ) : null}
         </View>
+        {searchFocused && searchQuery.trim() === '' ? (
+          <RecentShops
+            overlay
+            onSelect={(shopId) => {
+              setSearchFocused(false);
+              navigation.navigate('ShopDetail', { shopId });
+            }}
+          />
+        ) : null}
         <FilterBar />
         {truncated ? (
           <Text
@@ -513,12 +535,42 @@ export function MapScreen() {
         </LinearGradient>
       </Pressable>
 
+      <Pressable
+        onPressIn={tapLight}
+        onPress={() => setRouletteOpen(true)}
+        style={({ pressed }) => [
+          styles.fab,
+          styles.rouletteFab,
+          GLASS,
+          {
+            backgroundColor: theme.colors.overlay,
+            borderColor: theme.colors.overlayBorder,
+            borderWidth: 1,
+            transform: [{ scale: pressed ? 0.92 : 1 }],
+          },
+        ]}
+        accessibilityLabel={t('roulette.title')}
+      >
+        <Icon name="shuffle" size={21} color={theme.colors.primary} />
+      </Pressable>
+
       <NearbySheet
         shops={visibleShops}
         origin={userPos ?? mapCenter}
         originIsUser={userPos != null}
         zoomedOut={zoomedOut}
         onSelect={(shopId) => navigation.navigate('ShopDetail', { shopId })}
+      />
+
+      <RouletteModal
+        visible={rouletteOpen}
+        shops={visibleShops}
+        origin={userPos ?? mapCenter}
+        onClose={() => setRouletteOpen(false)}
+        onOpen={(shopId) => {
+          setRouletteOpen(false);
+          navigation.navigate('ShopDetail', { shopId });
+        }}
       />
     </View>
   );
@@ -548,6 +600,7 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   locateFab: { bottom: SHEET_PEEK + 84, right: 16 },
+  rouletteFab: { bottom: SHEET_PEEK + 152, right: 16 },
   searchBox: {
     alignItems: 'center',
     borderRadius: 27,

@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings, fetchPioneerCount } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { INVITE_APK_URL, INVITE_WEB_URL, inviteFriends } from '@/lib/invite';
+import { NAV_APPS, setNavApp, useNavApp } from '@/lib/directions';
 import { deleteAllMyPhotos } from '@/lib/photos';
 import type { RootStackParamList } from '@/navigation/types';
 import { ThemeMode, useTheme } from '@/theme/ThemeContext';
@@ -38,6 +39,7 @@ export function ProfileScreen() {
   const [myRatings, setMyRatings] = useState<RatingWithShop[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pioneerCount, setPioneerCount] = useState(0);
+  const navApp = useNavApp();
 
   useFocusEffect(
     useCallback(() => {
@@ -157,6 +159,39 @@ export function ProfileScreen() {
             );
           })}
         </View>
+      </View>
+
+      <View
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.navApp')}
+        </Text>
+        <View style={[styles.modeRow, styles.wrapRow]}>
+          {NAV_APPS.map((app) => {
+            const active = navApp === app;
+            return (
+              <Pressable
+                key={app}
+                onPress={() => setNavApp(app)}
+                style={[
+                  styles.modeChip,
+                  {
+                    backgroundColor: active ? theme.colors.primary : theme.colors.surfaceVariant,
+                    borderColor: active ? theme.colors.primary : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text style={{ color: active ? theme.colors.onPrimary : theme.colors.text, fontWeight: '600' }}>
+                  {t(`navApp.${app}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginTop: 10 }}>
+          {t('profile.navAppHint')}
+        </Text>
       </View>
 
       <View
@@ -302,6 +337,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modeRow: { flexDirection: 'row', gap: 10 },
+  wrapRow: { flexWrap: 'wrap' },
   passNumber: { fontSize: 32, fontWeight: '800', letterSpacing: -1 },
   passRow: { flexDirection: 'row', gap: 24 },
   passStat: { alignItems: 'center' },

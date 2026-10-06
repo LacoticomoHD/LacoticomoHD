@@ -5,17 +5,19 @@ import { Text } from '@/components/AppText';
 import { PressableScale } from '@/components/PressableScale';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatDistance, formatPrice } from '@/lib/geo';
-import { openStatus } from '@/lib/openingHours';
+import { useOpenState } from '@/lib/useOpenState';
 import { useTheme } from '@/theme/ThemeContext';
 import { ShopWithSummary } from '@/types';
 
 const PINS = {
   light: {
     open: require('../../assets/markers/pin-open-light.png'),
+    soon: require('../../assets/markers/pin-soon-light.png'),
     closed: require('../../assets/markers/pin-closed-light.png'),
   },
   dark: {
     open: require('../../assets/markers/pin-open-dark.png'),
+    soon: require('../../assets/markers/pin-soon-dark.png'),
     closed: require('../../assets/markers/pin-closed-dark.png'),
   },
 };
@@ -33,9 +35,9 @@ export function ShopRow({ shop: item, distance: dist, onPress }: Props) {
   const { theme } = useTheme();
   const { t, featureLabel } = useI18n();
   const pins = theme.dark ? PINS.dark : PINS.light;
-  const status = openStatus(item.opening_hours ?? {});
+  const { state, label, color } = useOpenState(item.opening_hours);
   const avg = item.summary?.avg_gesamt;
-  const open = status === 'open';
+  const open = state === 'open' || state === 'soon';
   const features = (item.features ?? []).slice(0, 3).map((f) => featureLabel(f));
   return (
     <PressableScale
@@ -61,7 +63,7 @@ export function ShopRow({ shop: item, distance: dist, onPress }: Props) {
         ]}
       >
         <Image
-          source={open ? pins.open : pins.closed}
+          source={state === 'soon' ? pins.soon : open ? pins.open : pins.closed}
           style={styles.tilePin}
           resizeMode="contain"
         />
@@ -71,23 +73,7 @@ export function ShopRow({ shop: item, distance: dist, onPress }: Props) {
           {item.name}
         </Text>
         <Text style={styles.metaLine} numberOfLines={1}>
-          <Text
-            style={{
-              color:
-                status === 'open'
-                  ? theme.colors.success
-                  : status === 'closed'
-                    ? theme.colors.danger
-                    : theme.colors.textSecondary,
-              fontWeight: '700',
-            }}
-          >
-            {status === 'open'
-              ? t('common.open')
-              : status === 'closed'
-                ? t('common.closed')
-                : t('common.hoursUnknown')}
-          </Text>
+          <Text style={{ color, fontWeight: '700' }}>{label}</Text>
           {dist != null ? (
             <Text style={{ color: theme.colors.textSecondary }}>{`  ·  ${formatDistance(dist)}`}</Text>
           ) : null}

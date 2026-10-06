@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 
 import { Text } from '@/components/AppText';
+import { EmptyState } from '@/components/EmptyState';
 import { ShopRow } from '@/components/ShopRow';
 import { useI18n } from '@/i18n/I18nContext';
+import { useFilters } from '@/lib/FilterContext';
 import { distanceKm } from '@/lib/geo';
 import { tapLight } from '@/lib/haptics';
 import { useTheme } from '@/theme/ThemeContext';
@@ -37,6 +39,7 @@ interface Props {
 export function NearbySheet({ shops, origin, originIsUser, zoomedOut, onSelect }: Props) {
   const { theme } = useTheme();
   const { t } = useI18n();
+  const { hasActiveFilters, resetFilters } = useFilters();
   const { height: windowHeight } = useWindowDimensions();
   const sheetHeight = Math.max(320, Math.round(windowHeight * 0.58));
   const collapsedY = sheetHeight - SHEET_PEEK;
@@ -153,7 +156,14 @@ export function NearbySheet({ shops, origin, originIsUser, zoomedOut, onSelect }
           />
         )}
         ListEmptyComponent={
-          zoomedOut ? null : (
+          zoomedOut ? null : hasActiveFilters ? (
+            <EmptyState
+              compact
+              icon="sliders"
+              text={t('list.emptyFilter')}
+              actions={[{ label: t('empty.resetFilters'), icon: 'x', onPress: resetFilters }]}
+            />
+          ) : (
             <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
               {t('map.sheetEmpty')}
             </Text>

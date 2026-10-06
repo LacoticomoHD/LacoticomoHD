@@ -3,6 +3,8 @@ import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { EmptyState } from '@/components/EmptyState';
+import { ShopListSkeleton } from '@/components/Skeleton';
 import { StarRating } from '@/components/StarRating';
 import { deleteRating, fetchMyRatings } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
@@ -28,6 +30,7 @@ export function MyRatingsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [ratings, setRatings] = useState<RatingWithShop[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const confirmDelete = (item: RatingWithShop) => {
     if (!user || !item.shops) return;
@@ -53,7 +56,8 @@ export function MyRatingsScreen() {
       if (!user) return;
       fetchMyRatings(user.id)
         .then(setRatings)
-        .catch((e: Error) => Alert.alert(t('common.error'), e.message));
+        .catch((e: Error) => Alert.alert(t('common.error'), e.message))
+        .finally(() => setLoading(false));
     }, [user])
   );
 
@@ -64,9 +68,17 @@ export function MyRatingsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>
-            {t('myratings.empty')}
-          </Text>
+          loading ? (
+            <ShopListSkeleton count={4} />
+          ) : (
+            <EmptyState
+              icon="star"
+              text={t('myratings.empty')}
+              actions={[
+                { label: t('empty.toMap'), icon: 'map', onPress: () => navigation.navigate('Tabs', { screen: 'Karte' }) },
+              ]}
+            />
+          )
         }
         renderItem={({ item }) => {
           const avg = ownAverage(item);
@@ -117,7 +129,6 @@ const styles = StyleSheet.create({
   },
   cardFooter: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
   cardName: { fontSize: 17, fontWeight: '700' },
-  empty: { marginTop: 48, paddingHorizontal: 24, textAlign: 'center' },
   flex: { flex: 1 },
   list: { padding: 16 },
 });
