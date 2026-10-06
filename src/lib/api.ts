@@ -18,6 +18,16 @@ import {
   ShopWithSummary,
 } from '@/types';
 
+import {
+  cacheShopList,
+  getMisc,
+  offlineSearch,
+  offlineShopById,
+  offlineShopsInBounds,
+  setMisc,
+  withOffline,
+} from './offline';
+
 import { supabase } from './supabase';
 
 /** Zeile der View shops_overview: Laden + Bewertungsschnitt + bestätigte Besonderheiten. */
@@ -106,28 +116,40 @@ export async function fetchShopsInBounds(
   bounds: GeoBounds,
   limit = BOUNDS_LIMIT
 ): Promise<ShopWithSummary[]> {
-  const { data, error } = await supabase
-    .from('shops_overview')
-    .select('*')
-    .gte('latitude', bounds.minLat)
-    .lte('latitude', bounds.maxLat)
-    .gte('longitude', bounds.minLon)
-    .lte('longitude', bounds.maxLon)
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return (data as OverviewRow[]).map(mapOverviewRow);
+  return withOffline(
+    async () => {
+      const { data, error } = await supabase
+        .from('shops_overview')
+        .select('*')
+        .gte('latitude', bounds.minLat)
+        .lte('latitude', bounds.maxLat)
+        .gte('longitude', bounds.minLon)
+        .lte('longitude', bounds.maxLon)
+        .limit(limit);
+      if (error) throw new Error(error.message);
+      return (data as OverviewRow[]).map(mapOverviewRow);
+    },
+    () => offlineShopsInBounds(bounds).slice(0, limit),
+    cacheShopList
+  );
 }
 
 /** Serverseitige Suche nach Name oder Adresse (deutschlandweit). */
 export async function searchShops(query: string, limit = 50): Promise<ShopWithSummary[]> {
   const escaped = query.replace(/[%_]/g, '');
-  const { data, error } = await supabase
-    .from('shops_overview')
-    .select('*')
-    .or(`name.ilike.%${escaped}%,address.ilike.%${escaped}%`)
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return (data as OverviewRow[]).map(mapOverviewRow);
+  return withOffline(
+    async () => {
+      const { data, error } = await supabase
+        .from('shops_overview')
+        .select('*')
+        .or(`name.ilike.%${escaped}%,address.ilike.%${escaped}%`)
+        .limit(limit);
+      if (error) throw new Error(error.message);
+      return (data as OverviewRow[]).map(mapOverviewRow);
+    },
+    () => offlineSearch(escaped).slice(0, limit),
+    cacheShopList
+  );
 }
 
 export type TopShopsMode = 'rating' | 'value';
@@ -156,9 +178,16 @@ export async function fetchTopShops(
       .order('rating_count', { ascending: false });
   }
   if (city) query = query.eq('city', city);
-  const { data, error } = await query.limit(limit);
-  if (error) throw new Error(error.message);
-  return (data as OverviewRow[]).map(mapOverviewRow);
+  const key = `top:${city ?? ''}:${mode}:${limit}:${minRatings}`;
+  return withOffline(
+    async () => {
+      const { data, error } = await query.limit(limit);
+      if (error) throw new Error(error.message);
+      return (data as OverviewRow[]).map(mapOverviewRow);
+    },
+    () => getMisc<ShopWithSummary[]>(key),
+    (v) => setMisc(key, v)
+  );
 }
 
 /** Stadt-Statistik (Ladenanzahl + Dönerpreis-Index), größte Städte zuerst. */
@@ -278,19 +307,32 @@ export async function saveFeatureVotes(
 }
 
 export async function fetchShop(shopId: string): Promise<Shop> {
-  const { data, error } = await supabase.from('shops').select('*').eq('id', shopId).single();
-  if (error) throw new Error(error.message);
-  return data as Shop;
+  return withOffline(
+    async () => {
+      const { data, error } = await supabase.from('shops').select('*').eq('id', shopId).single();
+      if (error) throw new Error(error.message);
+      return data as Shop;
+    },
+    // Offline: gespeicherte Ladenseite, sonst der Eintrag aus Karte/Liste.
+    () => getMisc<Shop>(`shop:${shopId}`) ?? (offlineShopById(shopId) as Shop | undefined),
+    (v) => setMisc(`shop:${shopId}`, v)
+  );
 }
 
 export async function fetchShopSummary(shopId: string): Promise<ShopRatingSummary | null> {
-  const { data, error } = await supabase
-    .from('shop_rating_summary')
-    .select('*')
-    .eq('shop_id', shopId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data as ShopRatingSummary | null;
+  return withOffline(
+    async () => {
+      const { data, error } = await supabase
+        .from('shop_rating_summary')
+        .select('*')
+        .eq('shop_id', shopId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data as ShopRatingSummary | null;
+    },
+    () => getMisc<ShopRatingSummary | null>(`sum:${shopId}`) ?? null,
+    (v) => setMisc(`sum:${shopId}`, v)
+  );
 }
 
 export async function fetchMyRating(shopId: string, userId: string): Promise<Rating | null> {

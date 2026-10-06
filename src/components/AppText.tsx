@@ -32,11 +32,15 @@ function fontFor(theme: Theme, style: TextStyle | undefined): TextStyle | null {
   return { fontFamily, fontWeight: 'normal' };
 }
 
+/** Große Systemschrift wird mitgemacht, aber gedeckelt – sonst sprengen
+ *  einzelne Wörter Knöpfe und Karten. */
+const MAX_FONT_SCALE = 1.4;
+
 /** Ersatz für Text aus react-native – setzt automatisch die Theme-Schrift. */
 export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...rest }, ref) {
   const { theme } = useTheme();
   const font = fontFor(theme, StyleSheet.flatten(style));
-  return <RNText ref={ref} style={[style, font]} {...rest} />;
+  return <RNText ref={ref} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[style, font]} {...rest} />;
 });
 
 /** Ersatz für TextInput aus react-native – setzt automatisch die Theme-Schrift. */
@@ -46,5 +50,5 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTex
 ) {
   const { theme } = useTheme();
   const font = fontFor(theme, StyleSheet.flatten(style) as TextStyle);
-  return <RNTextInput ref={ref} style={[style, font]} {...rest} />;
+  return <RNTextInput ref={ref} maxFontSizeMultiplier={MAX_FONT_SCALE} style={[style, font]} {...rest} />;
 });

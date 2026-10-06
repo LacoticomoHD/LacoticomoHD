@@ -42,6 +42,8 @@ import { useI18n } from '@/i18n/I18nContext';
 import { formatPrice } from '@/lib/geo';
 import { closingSoon, openStatus } from '@/lib/openingHours';
 import { rememberShop } from '@/lib/recentShops';
+import { ShareCardModal } from '@/components/ShareCardModal';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
 import {
@@ -113,7 +115,8 @@ function RatingBar({
 
 export function ShopDetailScreen() {
   const { theme } = useTheme();
-  const { t, categoryLabel, lang } = useI18n();
+  const { t, categoryLabel, featureLabel, lang } = useI18n();
+  const [shareOpen, setShareOpen] = useState(false);
   const dateLocale = lang === 'tr' ? 'tr-TR' : lang === 'en' ? 'en-GB' : 'de-DE';
   const { user } = useAuth();
   const requireAuth = useRequireAuth();
@@ -140,9 +143,10 @@ export function ShopDetailScreen() {
       Promise.all([
         fetchShop(shopId),
         fetchShopSummary(shopId),
-        fetchFeatureSummary(shopId),
-        fetchPriceHistory(shopId),
-        fetchHoursVoteSummary(shopId),
+        // Nebensachen dürfen fehlen (z. B. offline) – die Ladenseite erscheint trotzdem.
+        fetchFeatureSummary(shopId).catch(() => [] as ShopFeatureSummary[]),
+        fetchPriceHistory(shopId).catch(() => [] as PriceHistoryEntry[]),
+        fetchHoursVoteSummary(shopId).catch(() => null),
       ])
         .then(([s, sum, feats, prices, hv]) => {
           setShop(s);
@@ -203,20 +207,11 @@ export function ShopDetailScreen() {
     }
   };
 
-  /** Laden weiterempfehlen – der Link öffnet den Laden direkt in der Web-App. */
-  const shareShop = async () => {
+  /** Laden weiterempfehlen – als Bild-Karte oder Link (öffnet den Laden in der Web-App). */
+  const shareShop = () => {
     if (!shop) return;
     tapLight();
-    const url = `https://lacoticomohd.github.io/LacoticomoHD/laden/${shop.id}`;
-    const note =
-      summary?.avg_gesamt != null
-        ? t('detail.shareWithRating', { name: shop.name, v: summary.avg_gesamt.toFixed(1) })
-        : t('detail.sharePlain', { name: shop.name });
-    try {
-      await Share.share({ message: `${note}\n${url}`, url });
-    } catch {
-      // Abbruch durch den Nutzer ist kein Fehler.
-    }
+    setShareOpen(true);
   };
 
   if (!shop) {
@@ -284,6 +279,7 @@ export function ShopDetailScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.content}>
+      <OfflineBanner />
       {/* Hero-Kopf im Glut-Verlauf */}
       <LinearGradient
         colors={theme.gradients.hero}
@@ -444,6 +440,20 @@ export function ShopDetailScreen() {
 
       {/* Fotos von Laden und Döner */}
       <ShopPhotos shopId={shop.id} onPhotos={onPhotos} />
+
+      <ShareCardModal
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        data={{
+          id: shop.id,
+          name: shop.name,
+          city: shop.city ?? null,
+          avg: summary?.avg_gesamt ?? null,
+          count: summary?.rating_count ?? 0,
+          price: shop.doener_preis ?? null,
+          features: (shop.features ?? []).map((f) => featureLabel(f)),
+        }}
+      />
 
       {/* Preise */}
       {prices.length > 0 ? (

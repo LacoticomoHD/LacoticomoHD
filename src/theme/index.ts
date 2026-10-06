@@ -67,7 +67,7 @@ export const lightTheme: Theme = {
     starEmpty: '#CFC2B2',
     danger: '#C62828',
     success: '#1E7A3C',
-    warning: '#B86200',
+    warning: '#9A5200',
     overlay: 'rgba(255,255,255,0.86)',
     overlayBorder: 'rgba(255,255,255,0.95)',
     ratingChip: '#FDF3DF',

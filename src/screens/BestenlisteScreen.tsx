@@ -12,6 +12,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { EmptyState } from '@/components/EmptyState';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { ShopListSkeleton } from '@/components/Skeleton';
 import { StarRating } from '@/components/StarRating';
 import { fetchCityStats, fetchTopShops, TOP_MIN_RATINGS, TopShopsMode } from '@/lib/api';
@@ -119,6 +120,7 @@ export function BestenlisteScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.colors.background }]}>
+      <OfflineBanner />
       <View style={styles.cityBarWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cityBar}>
           <Pressable onPress={() => setSelectedCity(null)} style={cityChip(selectedCity === null)}>

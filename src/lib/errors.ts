@@ -1,9 +1,13 @@
+import { noteNetworkError } from './offline';
+
 let jwtHintShown = false;
 
 /** Übersetzt Ladefehler in verständliche Meldungen.
  *  Gibt null zurück, wenn der Fehler still ignoriert werden soll
  *  (z. B. der vorübergehende JWT-Zeitabgleich – nur einmal pro Sitzung melden). */
 export function formatLoadError(e: unknown): string | null {
+  // Kein Netz: Kein Fehlerfenster – der Offline-Hinweis oben erklärt es bereits.
+  if (noteNetworkError(e)) return null;
   const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
   if (/jwt/i.test(msg)) {
     if (jwtHintShown) return null;

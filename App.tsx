@@ -15,11 +15,12 @@ import Feather from '@expo/vector-icons/Feather';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider } from '@/i18n/I18nContext';
+import { appPrefsReady } from '@/lib/appPrefs';
 import { AuthProvider } from '@/lib/AuthContext';
 import { FilterProvider } from '@/lib/FilterContext';
 import { installWebAlert } from '@/lib/webAlert';
@@ -48,8 +49,13 @@ function AppInner() {
     SpaceGrotesk_700Bold,
     ...Feather.font,
   });
+  // Startansicht muss feststehen, bevor die Navigation aufgebaut wird.
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  useEffect(() => {
+    appPrefsReady.finally(() => setPrefsLoaded(true));
+  }, []);
   // Schlägt das Laden fehl, trotzdem starten (dann mit Systemschrift).
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !prefsLoaded) {
     return <View style={{ backgroundColor: theme.colors.background, flex: 1 }} />;
   }
   return (

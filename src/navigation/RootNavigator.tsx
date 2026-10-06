@@ -30,6 +30,8 @@ import { ShopEditsScreen } from '@/screens/ShopEditsScreen';
 import { ShopFormScreen } from '@/screens/ShopFormScreen';
 import { ShopListScreen } from '@/screens/ShopListScreen';
 import { useTheme } from '@/theme/ThemeContext';
+import { QuickActionsProvider } from '@/components/QuickActions';
+import { getAppPrefs } from '@/lib/appPrefs';
 import { Icon, type IconName } from '@/components/Icon';
 
 import type { RootStackParamList, TabParamList } from './types';
@@ -64,7 +66,10 @@ const linking: LinkingOptions<RootStackParamList> = {
       Platform.OS === 'web' && path.startsWith(BASE_PATH)
         ? path.slice(BASE_PATH.length) || '/'
         : path;
-    return defaultGetStateFromPath(cleaned, options);
+    // Startseite ohne Unterpfad → gewählte Startansicht (Karte oder Liste).
+    const start =
+      (cleaned === '/' || cleaned === '') && getAppPrefs().startTab === 'Liste' ? '/liste' : cleaned;
+    return defaultGetStateFromPath(start, options);
   },
   getPathFromState: (state, options) => {
     const path = defaultGetPathFromState(state, options);
@@ -83,7 +88,9 @@ function Tabs() {
   const { theme } = useTheme();
   const { t } = useI18n();
   return (
+    <QuickActionsProvider>
     <Tab.Navigator
+      initialRouteName={getAppPrefs().startTab}
       screenOptions={({ route }) => ({
         headerTitleStyle: { fontFamily: theme.fonts.extrabold, fontSize: 19 },
         headerShadowVisible: false,
@@ -114,6 +121,7 @@ function Tabs() {
       />
       <Tab.Screen name="Profil" component={ProfileScreen} options={{ title: t('tab.profile') }} />
     </Tab.Navigator>
+    </QuickActionsProvider>
   );
 }
 

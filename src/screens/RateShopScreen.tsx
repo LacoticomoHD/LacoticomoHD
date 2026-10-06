@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
@@ -72,6 +72,13 @@ export function RateShopScreen() {
   const [cardPayment, setCardPayment] = useState<boolean | null>(null);
   const [originalCard, setOriginalCard] = useState<boolean | null>(null);
   const [hoursMissing, setHoursMissing] = useState(false);
+  // Schritt-für-Schritt: erst je eine Kategorie pro Seite, zum Schluss die Details.
+  const [step, setStep] = useState(0);
+  const lastStep = RATING_CATEGORIES.length; // = Detail-Seite
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
 
   useEffect(() => {
     fetchShop(shopId)
@@ -108,8 +115,12 @@ export function RateShopScreen() {
       .catch(() => {});
   }, [shopId, user]);
 
-  const setCategory = (cat: RatingCategory, value: number) =>
+  const setCategory = (cat: RatingCategory, value: number) => {
     setValues((prev) => ({ ...prev, [cat]: value }));
+    // Nach dem Tippen kurz die Sterne zeigen, dann automatisch weiter.
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => setStep((s) => Math.min(s + 1, lastStep)), 420);
+  };
 
   /** Tippen wechselt: keine Angabe → ✓ vorhanden → ✗ nicht vorhanden → keine Angabe */
   const cycleVote = (feature: ShopFeature) => {
@@ -139,8 +150,10 @@ export function RateShopScreen() {
   const submit = async () => {
     if (!user) return;
     // Alle Kategorien sind Pflicht – außer Fleischqualität (bei vegetarisch/vegan optional).
-    if (RATING_CATEGORIES.some((cat) => cat !== 'fleischqualitaet' && values[cat] < 1)) {
+    const missing = RATING_CATEGORIES.findIndex((cat) => cat !== 'fleischqualitaet' && values[cat] < 1);
+    if (missing >= 0) {
       Alert.alert(t('rate.incomplete'), t('rate.incompleteBody'));
+      setStep(missing);
       return;
     }
     // Preis-Frischehalter: Eingabe prüfen, bevor irgendetwas gespeichert wird.
@@ -208,6 +221,8 @@ export function RateShopScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{shopName}</Text>
+      {step === 0 ? (
+      <>
       <Text style={{ color: theme.colors.textSecondary, marginBottom: 8 }}>
         {existing
           ? t('rate.introEdit')
@@ -226,32 +241,98 @@ export function RateShopScreen() {
           ? t('rate.verifiedAlready')
           : t('rate.verifyHint')}
       </Text>
+      </>
+      ) : null}
 
-      {RATING_CATEGORIES.map((cat) => (
-        <View
-          key={cat}
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            {categoryLabel(cat)}
-            {cat === 'fleischqualitaet' ? (
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '400', fontSize: 13 }}>
-                {'  '}
-                {t('rate.optional')}
+      {/* Fortschritt: ein Punkt je Kategorie + Details – antippbar zum Springen */}
+      <View style={styles.progressRow} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: lastStep + 1, now: step + 1 }}>
+        {[...RATING_CATEGORIES, 'details' as const].map((key, i) => {
+          const done = i < lastStep ? values[key as RatingCategory] >= 1 : false;
+          const active = i === step;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setStep(i)}
+              hitSlop={{ top: 10, bottom: 10 }}
+              accessibilityLabel={i < lastStep ? categoryLabel(key as RatingCategory) : t('rate.stepDetails')}
+              style={[
+                styles.progressSeg,
+                {
+                  backgroundColor: active ? theme.colors.primary : done ? theme.colors.accent : theme.colors.surfaceVariant,
+                  opacity: active || done ? 1 : 0.9,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+      <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginBottom: 12 }}>
+        {t('rate.stepOf', { n: step + 1, total: lastStep + 1 })}
+      </Text>
+
+      {step < lastStep ? (
+        (() => {
+          const cat = RATING_CATEGORIES[step];
+          const optional = cat === 'fleischqualitaet';
+          return (
+            <View
+              style={[styles.stepCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+            >
+              <Text style={[styles.stepTitle, { color: theme.colors.text }]}>{categoryLabel(cat)}</Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 13.5, marginBottom: 18, textAlign: 'center' }}>
+                {optional ? t('rate.meatOptionalHint') : t(`rate.q.${cat}`)}
               </Text>
-            ) : null}
-          </Text>
-          {cat === 'fleischqualitaet' ? (
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12.5, marginBottom: 10, marginTop: -4 }}>
-              {t('rate.meatOptionalHint')}
-            </Text>
-          ) : null}
-          <StarRating value={values[cat]} onChange={(v) => setCategory(cat, v)} size={30} />
-        </View>
-      ))}
+              <StarRating value={values[cat]} onChange={(v) => setCategory(cat, v)} size={46} />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 12, minHeight: 18 }}>
+                {values[cat] >= 1 ? t(`rate.level${values[cat]}`) : ' '}
+              </Text>
+              <View style={styles.stepNav}>
+                <Pressable
+                  onPress={() => setStep((s) => Math.max(0, s - 1))}
+                  disabled={step === 0}
+                  accessibilityRole="button"
+                  style={[styles.stepBtn, { borderColor: theme.colors.border, opacity: step === 0 ? 0.4 : 1 }]}
+                >
+                  <Icon name="chevron-left" size={18} color={theme.colors.text} />
+                  <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{t('rate.back')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setStep((s) => Math.min(lastStep, s + 1))}
+                  disabled={!optional && values[cat] < 1}
+                  accessibilityRole="button"
+                  style={[
+                    styles.stepBtn,
+                    {
+                      backgroundColor: theme.colors.primary,
+                      borderColor: theme.colors.primary,
+                      opacity: !optional && values[cat] < 1 ? 0.4 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.colors.onPrimary, fontWeight: '800' }}>
+                    {optional && values[cat] < 1 ? t('rate.skip') : t('rate.next')}
+                  </Text>
+                  <Icon name="chevron-right" size={18} color={theme.colors.onPrimary} />
+                </Pressable>
+              </View>
+            </View>
+          );
+        })()
+      ) : (
+        <>
+      {/* Zusammenfassung der Sterne – antippen springt zur Kategorie */}
+      <View style={[styles.summary, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        {RATING_CATEGORIES.map((cat, i) => (
+          <Pressable key={cat} onPress={() => setStep(i)} style={styles.summaryRow} accessibilityRole="button">
+            <Text style={{ color: theme.colors.text, flex: 1, fontSize: 14 }}>{categoryLabel(cat)}</Text>
+            {values[cat] >= 1 ? (
+              <StarRating value={values[cat]} size={16} />
+            ) : (
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('rate.notRated')}</Text>
+            )}
+          </Pressable>
+        ))}
+      </View>
 
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
         {t('rate.featuresTitle')}
@@ -445,6 +526,8 @@ export function RateShopScreen() {
         onPress={submit}
         loading={busy}
       />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -491,7 +574,24 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6, marginTop: 20 },
+  progressRow: { flexDirection: 'row', gap: 5, marginBottom: 8, marginTop: 6 },
+  progressSeg: { borderRadius: 3, flex: 1, height: 6 },
   spacer: { height: 20 },
+  stepBtn: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  stepCard: { alignItems: 'center', borderRadius: 24, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 26 },
+  stepNav: { alignSelf: 'stretch', flexDirection: 'row', gap: 10, marginTop: 22 },
+  stepTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4, marginBottom: 6, textAlign: 'center' },
+  summary: { borderRadius: 20, borderWidth: 1, gap: 10, padding: 16 },
+  summaryRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 4 },
   verifiedHint: {
     borderRadius: 14,

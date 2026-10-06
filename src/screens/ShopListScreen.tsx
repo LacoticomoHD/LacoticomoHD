@@ -6,8 +6,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { EmptyState } from '@/components/EmptyState';
 import { FilterBar } from '@/components/FilterBar';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { RecentShops } from '@/components/RecentShops';
 import { ShopListSkeleton } from '@/components/Skeleton';
+import { TipBanner } from '@/components/TipBanner';
 import { TextField } from '@/components/TextField';
 import { useI18n } from '@/i18n/I18nContext';
 import { fetchShopsInBounds, searchShops } from '@/lib/api';
@@ -151,20 +153,21 @@ export function ShopListScreen() {
           placeholder={t('list.searchPlaceholder')}
         />
       </View>
+      <OfflineBanner />
       <FilterBar />
       <View style={styles.sortRow}>
         <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{t('list.sort')}</Text>
-        <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')}>
+        <Pressable onPress={() => setSortMode('rating')} style={sortChip(sortMode === 'rating')} accessibilityRole="radio" accessibilityState={{ checked: sortMode === 'rating' }}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
             {t('list.sortBest')}
           </Text>
         </Pressable>
-        <Pressable onPress={() => setSortMode('price')} style={sortChip(sortMode === 'price')}>
+        <Pressable onPress={() => setSortMode('price')} style={sortChip(sortMode === 'price')} accessibilityRole="radio" accessibilityState={{ checked: sortMode === 'price' }}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
             {t('list.sortCheapest')}
           </Text>
         </Pressable>
-        <Pressable onPress={selectDistanceSort} style={sortChip(sortMode === 'distance')}>
+        <Pressable onPress={selectDistanceSort} style={sortChip(sortMode === 'distance')} accessibilityRole="radio" accessibilityState={{ checked: sortMode === 'distance' }}>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
             {t('list.sortNearest')}
           </Text>
@@ -177,11 +180,14 @@ export function ShopListScreen() {
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
-          query.trim() === '' ? (
-            <View style={styles.recentWrap}>
-              <RecentShops onSelect={(id) => navigation.navigate('ShopDetail', { shopId: id })} />
-            </View>
-          ) : null
+          <>
+            {query.trim() === '' ? (
+              <View style={styles.recentWrap}>
+                <RecentShops onSelect={(id) => navigation.navigate('ShopDetail', { shopId: id })} />
+              </View>
+            ) : null}
+            {sorted.length > 0 ? <TipBanner id="longpress" icon="zap" text={t('tip.longPress')} /> : null}
+          </>
         }
         ListEmptyComponent={
           loading ? (

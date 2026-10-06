@@ -41,6 +41,7 @@ import { formatLoadError } from '@/lib/errors';
 import { tapLight, tapMedium } from '@/lib/haptics';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useFilters } from '@/lib/FilterContext';
+import { getAppPrefs } from '@/lib/appPrefs';
 import { pinState } from '@/lib/openingHours';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeContext';
@@ -48,6 +49,7 @@ import { GeoBounds, ShopWithSummary } from '@/types';
 import { Text, TextInput } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
 import { NearbySheet, SHEET_PEEK } from '@/components/NearbySheet';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { RecentShops } from '@/components/RecentShops';
 import { RouletteModal } from '@/components/RouletteModal';
 import { darkStyleUrl, loadWarmDarkStyle, useWarmDarkStyle } from '@/lib/mapStyle';
@@ -202,6 +204,8 @@ export function MapScreen() {
         ));
       if (pos) {
         setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        // Einstellung „Beim Start zu meinem Standort springen" (Profil).
+        if (!getAppPrefs().autoLocate) return;
         setCameraJump((prev) => ({
           centerCoordinate: [pos.coords.longitude, pos.coords.latitude],
           zoomLevel: 13,
@@ -399,7 +403,7 @@ export function MapScreen() {
           {searching ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : searchQuery.length > 0 ? (
-            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+            <Pressable onPress={() => setSearchQuery('')} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('empty.clearSearch')}>
               <Icon name="x" size={18} color={theme.colors.textSecondary} />
             </Pressable>
           ) : null}
@@ -414,6 +418,7 @@ export function MapScreen() {
           />
         ) : null}
         <FilterBar />
+        <OfflineBanner floating />
         {truncated ? (
           <Text
             style={[

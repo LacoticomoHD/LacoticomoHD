@@ -44,7 +44,13 @@ export function FilterBar() {
       </>
     );
     return (
-      <Pressable onPress={onPress} style={styles.chipWrap}>
+      <Pressable
+        onPress={onPress}
+        style={styles.chipWrap}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: active }}
+        accessibilityLabel={label}
+      >
         {active ? (
           <LinearGradient
             colors={theme.gradients.primary}

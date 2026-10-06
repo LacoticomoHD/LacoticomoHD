@@ -3,6 +3,7 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/AppText';
 import { PressableScale } from '@/components/PressableScale';
+import { useQuickActions } from '@/components/QuickActions';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatDistance, formatPrice } from '@/lib/geo';
 import { useOpenState } from '@/lib/useOpenState';
@@ -39,9 +40,25 @@ export function ShopRow({ shop: item, distance: dist, onPress }: Props) {
   const avg = item.summary?.avg_gesamt;
   const open = state === 'open' || state === 'soon';
   const features = (item.features ?? []).slice(0, 3).map((f) => featureLabel(f));
+  const quickActions = useQuickActions();
+  // Für Bildschirmleser alles in einem Satz statt vieler Einzelteile.
+  const a11yLabel = [
+    item.name,
+    label,
+    dist != null ? formatDistance(dist) : null,
+    item.doener_preis != null ? formatPrice(item.doener_preis) : null,
+    avg != null ? t('a11y.stars', { v: avg.toFixed(1).replace('.', ',') }) : t('common.noRating'),
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
     <PressableScale
       onPress={onPress}
+      onLongPress={() => quickActions(item)}
+      delayLongPress={380}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint={t('a11y.rowHint')}
       style={[
         styles.card,
         {

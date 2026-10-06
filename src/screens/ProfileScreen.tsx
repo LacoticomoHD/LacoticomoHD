@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { deleteOwnAccount, fetchIsAdmin, fetchMyRatings, fetchPioneerCount } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { INVITE_APK_URL, INVITE_WEB_URL, inviteFriends } from '@/lib/invite';
+import { setAppPrefs, useAppPrefs } from '@/lib/appPrefs';
 import { NAV_APPS, setNavApp, useNavApp } from '@/lib/directions';
 import { deleteAllMyPhotos } from '@/lib/photos';
 import type { RootStackParamList } from '@/navigation/types';
@@ -40,6 +41,7 @@ export function ProfileScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pioneerCount, setPioneerCount] = useState(0);
   const navApp = useNavApp();
+  const prefs = useAppPrefs();
 
   useFocusEffect(
     useCallback(() => {
@@ -159,6 +161,54 @@ export function ProfileScreen() {
             );
           })}
         </View>
+      </View>
+
+      <View
+        style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          {t('profile.startView')}
+        </Text>
+        <View style={styles.modeRow}>
+          {(['Karte', 'Liste'] as const).map((tab) => {
+            const active = prefs.startTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setAppPrefs({ startTab: tab })}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                style={[
+                  styles.modeChip,
+                  {
+                    backgroundColor: active ? theme.colors.primary : theme.colors.surfaceVariant,
+                    borderColor: active ? theme.colors.primary : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text style={{ color: active ? theme.colors.onPrimary : theme.colors.text, fontWeight: '600' }}>
+                  {tab === 'Karte' ? t('profile.startMap') : t('profile.startList')}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable
+          onPress={() => setAppPrefs({ autoLocate: !prefs.autoLocate })}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: prefs.autoLocate }}
+          style={styles.switchRow}
+        >
+          <Text style={{ color: theme.colors.text, flex: 1, fontSize: 14.5 }}>{t('profile.autoLocate')}</Text>
+          <View
+            style={[
+              styles.switchTrack,
+              { backgroundColor: prefs.autoLocate ? theme.colors.primary : theme.colors.surfaceVariant, borderColor: theme.colors.border },
+            ]}
+          >
+            <View style={[styles.switchKnob, { alignSelf: prefs.autoLocate ? 'flex-end' : 'flex-start' }]} />
+          </View>
+        </Pressable>
       </View>
 
       <View
@@ -337,6 +387,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modeRow: { flexDirection: 'row', gap: 10 },
+  switchKnob: { backgroundColor: '#FFFFFF', borderRadius: 11, height: 22, width: 22 },
+  switchRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 14 },
+  switchTrack: { borderRadius: 15, borderWidth: 1, height: 30, justifyContent: 'center', paddingHorizontal: 3, width: 52 },
   wrapRow: { flexWrap: 'wrap' },
   passNumber: { fontSize: 32, fontWeight: '800', letterSpacing: -1 },
   passRow: { flexDirection: 'row', gap: 24 },

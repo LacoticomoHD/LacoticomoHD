@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 
 import { tapLight } from '@/lib/haptics';
+import { useI18n } from '@/i18n/I18nContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { Text } from '@/components/AppText';
 
@@ -60,8 +61,16 @@ function Star({
 
 export function StarRating({ value, onChange, size = 22 }: Props) {
   const { theme } = useTheme();
+  const { t } = useI18n();
+  const valueText = t('a11y.stars', { v: (Math.round(value * 10) / 10).toString().replace('.', ',') });
   return (
-    <View style={styles.row}>
+    <View
+      style={styles.row}
+      // Nur-Anzeige: als ein Bild mit Text („4,5 von 5 Sternen") vorlesen.
+      accessible={!onChange}
+      accessibilityRole={onChange ? undefined : 'image'}
+      accessibilityLabel={onChange ? undefined : valueText}
+    >
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = value >= star - 0.25;
         const starNode = (
@@ -81,6 +90,9 @@ export function StarRating({ value, onChange, size = 22 }: Props) {
               onChange(star);
             }}
             hitSlop={6}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: Math.round(value) === star }}
+            accessibilityLabel={t('a11y.starN', { n: star })}
           >
             {starNode}
           </Pressable>

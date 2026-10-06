@@ -14,5 +14,16 @@ interface Props {
 /** Einheitliche Linien-Icons (Feather) statt Emojis – wirken auf jedem Gerät gleich. */
 export function Icon({ name, size = 20, color }: Props) {
   const { theme } = useTheme();
-  return <Feather name={name} size={size} color={color ?? theme.colors.text} />;
+  // Rein dekorativ: Bildschirmleser sollen das Symbolzeichen nicht vorlesen –
+  // die Bedeutung steht immer im Text bzw. im accessibilityLabel daneben.
+  return (
+    <Feather
+      name={name}
+      size={size}
+      color={color ?? theme.colors.text}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      aria-hidden
+    />
+  );
 }
